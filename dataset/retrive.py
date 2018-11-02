@@ -19,20 +19,28 @@ class LinkBuilder:
                               str(e))
             self.unprocessed.append(urls)
 
-    def nlinks(self):
+    def ntweets(self):
         return len(self.data)
+
+    def nlinks(self):
+        return len(self.unprocessed)
 
     def __iter__(self):
         return self
 
     def __next__(self):
 
+        if len(self.unprocessed) == 0:
+            raise StopIteration
+
         while len(self.next) == 0:
             self.next = self.unprocessed.pop()
+            if len(self.next) == 0:
+                print('No links in this tweet..')
 
         curr = self.next.pop()
 
-        try :
+        try:
             final = requests.get(curr).url
 
             if self.href in final:
@@ -46,20 +54,19 @@ class LinkBuilder:
 
 
 pkls = [
-    '../twitter_scraper/verge_tweets_2018-10-03.pkl',
+    #'../twitter_scraper/verge_tweets_2018-10-03.pkl',
     '../twitter_scraper/Gizmodo_tweets_2018-10-03.pkl',
-    '../twitter_scraper/techcrunch_tweets_2018-10-03.pkl',
     '../twitter_scraper/WIRED_tweets_2018-10-03.pkl'
 ]
 
 hrefs = [
-    'https://www.theverge.com/',
+    #'https://www.theverge.com/',
     'https://gizmodo.com/',
     'https://www.wired.com/'
 ]
 
 dsnames = [
-    'theverge',
+    #'theverge',
     'gizomodo',
     'wired'
 ]
@@ -71,17 +78,16 @@ for tweets, href, fname in zip(pkls, hrefs, dsnames):
 
     print('Working on %s, href = %s' % (tweets, href))
     links = LinkBuilder(tweets=tweets, href=href)
-    n = links.nlinks()
     fetched = []
     file = fname + '.pkl'
 
     for link in links:
-        print("%s/%s - New link = %s" % (i, n, link))
+        print("Found new link! (#%s) : %s" % (i, link))
         fetched.append(link)
 
         if i % backup_interval == 0:
             print('Saving links so far into file %s..' % file)
-            with open(fname, 'wb') as f:
+            with open(file, 'wb') as f:
                 pickle.dump(fetched, f)
 
         i += 1
