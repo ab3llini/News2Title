@@ -17,6 +17,12 @@ WIRED = {
                     'aria-label': 'Article Title'
                 }
             },
+        'date' : {
+            'object' : 'time',
+            'attributes' : {
+                'class' : 'date-mdy'
+            }
+        },
         'news':
             {
                 'object': 'article',
