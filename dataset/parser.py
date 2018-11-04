@@ -2,7 +2,9 @@ from bs4 import BeautifulSoup
 import requests
 from enum import Enum
 import re
-
+from tqdm import tqdm
+import pickle
+import pymongo
 
 def striphtml(data):
     p = re.compile(r'<.*?>')
@@ -31,6 +33,36 @@ WIRED = {
     }
 
 
+VERGE = {
+    'title':
+        {
+            'object':'title',
+            'attributes':{}
+        },
+    'news':
+        {
+            'object':'div',
+            'attributes':{
+                "class": "c-entry-content"
+            }
+        }
+}
+
+GIZMODO = {
+    'title':
+        {
+            'object': 'title',
+            'attributes': {}
+        },
+    'news':
+        {
+            'object': 'div',
+            'attributes':{
+                'class':'post-content entry-content js_entry-content '
+            }
+        }
+}
+
 class Parser:
 
     def __init__(self, format):
@@ -58,8 +90,15 @@ class Parser:
 
         return out
 
+myclient = pymongo.MongoClient("mongodb://localhost:27017/")
+db = myclient["News2Titledb"]
 
 p = Parser(format=WIRED)
-result = p.parse('https://www.wired.com/review/review-coral-one-vacuum/')
+with open("wired.pkl","rb") as f:
+    links = pickle.load(f)
 
-print(result)
+for link in tqdm(links):
+    print(link)
+    result = p.parse(link)
+    #print(result)
+    #db.news.insert_one(result)
