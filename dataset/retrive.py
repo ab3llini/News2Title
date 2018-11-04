@@ -54,21 +54,21 @@ class LinkBuilder:
 
 
 pkls = [
-    #'../twitter_scraper/verge_tweets_2018-10-03.pkl',
-    '../twitter_scraper/Gizmodo_tweets_2018-10-03.pkl',
-    '../twitter_scraper/WIRED_tweets_2018-10-03.pkl'
+    # '../twitter_scraper/verge_tweets_2018-10-03.pkl',
+    # '../twitter_scraper/Gizmodo_tweets_2018-10-03.pkl',
+    # '../twitter_scraper/WIRED_tweets_2018-10-03.pkl'
 ]
 
 hrefs = [
-    #'https://www.theverge.com/',
-    'https://gizmodo.com/',
-    'https://www.wired.com/'
+    # 'https://www.theverge.com/',
+    # 'https://gizmodo.com/',
+    # 'https://www.wired.com/'
 ]
 
 dsnames = [
-    #'theverge',
-    'gizomodo',
-    'wired'
+    # 'theverge',
+    # 'gizomodo',
+    # 'wired'
 ]
 
 backup_interval = 10
