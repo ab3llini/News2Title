@@ -1,22 +1,32 @@
 from bs4 import BeautifulSoup
 import requests
-from enum import Enum
 import re
 from tqdm import tqdm
 import pickle
 import pymongo
+import tldextract
 
 def striphtml(data):
     p = re.compile(r'<.*?>')
     return p.sub('', str(data))
 
 
+HEADERS = {
+    'method': 'GET',
+    'scheme': 'https',
+    'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+    'accept-language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
+    'cache-control': 'max-age=0',
+    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'
+}
+
+
 WIRED = {
         'title':
             {
-                'object': 'span',
+                'object': 'h1',
                 'attributes': {
-                    'aria-label': 'Article Title'
+                    'class': 'title'
                 }
             },
         'date' : {
@@ -36,8 +46,10 @@ WIRED = {
 VERGE = {
     'title':
         {
-            'object':'title',
-            'attributes':{}
+            'object': 'h1',
+            'attributes': {
+                'class': 'c-page-title'
+            }
         },
     'news':
         {
@@ -63,6 +75,7 @@ GIZMODO = {
         }
 }
 
+
 class Parser:
 
     def __init__(self, format):
@@ -70,12 +83,15 @@ class Parser:
 
     def parse(self, href):
 
-        req = requests.get(href)
+        req = requests.get(href, headers=HEADERS)
         html = req.text
 
         soup = BeautifulSoup(html)
 
-        out = {}
+        out = {
+            'href' : href,
+            'domain': tldextract.extract(href).domain
+        }
 
         lookfor = self.format.keys()
 
@@ -90,15 +106,24 @@ class Parser:
 
         return out
 
+
 myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 db = myclient["News2Titledb"]
 
-p = Parser(format=WIRED)
-with open("wired.pkl","rb") as f:
-    links = pickle.load(f)
+for cfg, file in zip((VERGE, WIRED, GIZMODO), ('theverge.pkl', 'wired.pkl', 'gizomodo.pkl')):
 
-for link in tqdm(links):
-    print(link)
-    result = p.parse(link)
-    #print(result)
-    #db.news.insert_one(result)
+    p = Parser(format=cfg)
+    with open(file, "rb") as f:
+        links = pickle.load(f)
+
+    for link in tqdm(links):
+        try:
+            result = p.parse(link)
+            db.news.insert_one(result)
+        except Exception as e:
+            print("Something went wrong with one article.. (%s)" % str(e))
+
+
+
+
+
