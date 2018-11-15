@@ -12,6 +12,7 @@ data['content'] = data['content'].str.lower()
 tkn_head = data['title'].apply(lambda row: nltk.word_tokenize(row)).tolist()
 tkn_desc = data['content'].apply(lambda row: nltk.word_tokenize(row)).tolist()
 
+print(tkn_head[0])
 
 out = []
 for t, d in zip(tkn_head, tkn_desc):
