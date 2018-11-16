@@ -1,6 +1,7 @@
 .idea
 
-embedding/glove.*
+/embedding/glove.*
+/preprocessing/A*
 
 
 # Created by https://www.gitignore.io/api/pycharm
