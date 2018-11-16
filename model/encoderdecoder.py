@@ -1,62 +1,84 @@
-import re
 import numpy as np
-from keras.preprocessing.sequence import pad_sequences
-from keras.preprocessing.text import one_hot
-from keras.models import Sequential
-from keras.layers import Embedding, Flatten, Dense
+import pickle
 from embedding.load_glove_embeddings import load_glove_embeddings
 
-# Define documents
-docs = ['Well done!', 'Good work', 'Great effort', 'nice work', 'Excellent!',
-        'Weak', 'Poor effort!', 'not good', 'poor work', 'Could have done better.']
+from keras.preprocessing.sequence import pad_sequences
 
-# Define class labels
-labels = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
+from utility.text import *
 
-# ---------------------------------------------------------------------------------- TRAIN EMBEDDINGS
+# Read tokenized news and titles
+with open('../preprocessing/A1_TKN_500.pkl', 'rb') as handle:
+    data = np.array(pickle.load(handle))
+    headlines, articles = data[:, 0], data[:, 1]
+
+# Print how many articles are present in the pickle
+# Print even some statistics
+print('Loaded %s articles' % len(articles))
+print('Headline length (words): avg = %s, min = %s, max = %s' % get_text_stats(headlines))
+print('Article length (words): avg = %s, min = %s, max = %s' % get_text_stats(articles))
+
+# Compute the vocabulary for the loaded pickle
+# We pass all the possible sentences present in both the headline and the article
+
+# Let's define some control variables, such as the max length of heads and desc
+# that we will use in our model
+max_headline_len = 25
+max_article_len = 50
+
+# Resize the headlines and the articles to the max length
+headlines = truncate_sentences(headlines, max_headline_len)
+articles = truncate_sentences(articles, max_article_len)
+
+print('\nStats after truncate:')
+print('Headline length (words): avg = %s, min = %s, max = %s' % get_text_stats(headlines))
+print('Article length (words): avg = %s, min = %s, max = %s' % get_text_stats(articles))
+
+# Compute the vocabulary now, after truncating the lists
+# IMPORTANT : The total number of words will still depend on the number of available embedding!
+vocabulary_sorted, vocabulary_counter = get_vocabulary(headlines + articles)
+print('\nSo far, there are %s different words in headlines and articles (after truncate)' % len(vocabulary_sorted))
+
+# We need to load now our embeddings in order to proceed with further processing
+word2index, embedding_matrix = load_glove_embeddings(fp='../embedding/glove.6B.50d.txt', embedding_dim=50)
+
+# We now need to map each word to its corresponding glove embedding index
+# IMPORTANT: If a word is not found in glove, IT WILL BE REMOVED! (for the moment..)
+headlines = map_to_glove_index(headlines, word2index)
+articles = map_to_glove_index(articles, word2index)
+
+print('\nStats after mapping to glove indexes:')
+print('Headline length (indices): avg = %s, min = %s, max = %s' % get_text_stats(headlines))
+print('Article length (indices): avg = %s, min = %s, max = %s' % get_text_stats(articles))
+
+# Now let's recompute the vocabulary
+# In this case of course it will be composed by indices and not words
+# Each index though will have a real corresponding glove embedding
+glove_vocabulary_sorted, glove_vocabulary_counter = get_vocabulary(headlines + articles)
+
+print('\nSo far, there are %s different glove indices in headlines and articles (after truncate and glove mapping)' % len(glove_vocabulary_sorted))
+print('We found embeddings for %.2f%% of words' % (len(glove_vocabulary_sorted)/len(vocabulary_sorted) * 100.0))
 
 
-own_embedding_vocab_size = 10
-encoded_docs_oe = [one_hot(d, own_embedding_vocab_size) for d in docs]
-print(encoded_docs_oe)
+# Now we want to pad the headlines and articles to a fixed length
+headlines = pad_sequences(headlines, maxlen=max_headline_len, padding='post')
+articles = pad_sequences(articles, maxlen=max_article_len, padding='post')
 
-maxlen = 5
-padded_docs_oe = pad_sequences(encoded_docs_oe, maxlen=maxlen, padding='post')
-print(padded_docs_oe)
-
-model = Sequential()
-model.add(Embedding(input_dim=own_embedding_vocab_size, # 10
-                    output_dim=32,
-                    input_length=maxlen))
-model.add(Flatten())
-model.add(Dense(1, activation='sigmoid'))
-
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['acc'])  # Compile the model
-print(model.summary())  # Summarize the model
-model.fit(padded_docs_oe, labels, epochs=50, verbose=0)  # Fit the model
-loss, accuracy = model.evaluate(padded_docs_oe, labels, verbose=0)  # Evaluate the model
-print('Accuracy: %0.3f' % accuracy)
-
-# ---------------------------------------------------------------------------------- USE PRE-TRAINED EMBEDDINGS
-
-word2index, embedding_matrix = load_glove_embeddings('../embedding/glove.6B.50d.txt', embedding_dim=50)
+print('\nStats after padding:')
+print('Headline length (indices): avg = %s, min = %s, max = %s' % get_text_stats(headlines))
+print('Article length (indices): avg = %s, min = %s, max = %s' % get_text_stats(articles))
 
 
-def custom_tokenize(docs):
-    output_matrix = []
-    for d in docs:
-        indices = []
-        for w in d.split():
-            indices.append(word2index[re.sub(r'[^\w\s]', '', w).lower()])
-        output_matrix.append(indices)
-    return output_matrix
+# Now that we have our vocabulary lock 'n loaded we can proceed
+# Now let't translate the latter variables to some others more meaningful for our model
+input_characters = glove_vocabulary_sorted
+target_characters = glove_vocabulary_sorted
+
+num_encoder_tokens = len(input_characters)
+num_decoder_tokens = len(target_characters)
+
+max_encoder_seq_len = max_headline_len
+max_decoder_seq_len = max_article_len
+
+print('\nNumber of unique words (input/output tokens) :', num_encoder_tokens)
 
 
-# Encode docs with our special "custom_tokenize" function
-encoded_docs_ge = custom_tokenize(docs)
-print(encoded_docs_ge)
-
-# Pad documents to a max length of 5 words
-maxlen = 5
-padded_docs_ge = pad_sequences(encoded_docs_ge, maxlen=maxlen, padding='post')
-print(padded_docs_ge)
