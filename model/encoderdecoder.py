@@ -1,11 +1,10 @@
-import numpy as np
 import pickle
 from embedding.load_glove_embeddings import load_glove_embeddings
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Model
-from keras.layers import Input, LSTM, Dense, Embedding
+from keras.layers import Input, LSTM, Dense, Embedding, TimeDistributed
 from utility.text import *
-from scipy.ndimage.interpolation import shift
+
 
 
 # Define which embedding to use
@@ -56,6 +55,7 @@ embeddable = get_embeddable(vocabulary_sorted, word2index)
 
 # Shrink the embedding matrix as much as possible, by keeping only the embeddings of the words in the vocabulary
 word2index, embeddings = get_reduced_embedding_matrix(embeddable, embeddings, word2index, glove_embedding_len)
+
 
 # Save New Embeddings Length to show shrink ratio
 NEL = len(embeddings)
@@ -110,14 +110,14 @@ print('\nWhole glove embedding matrix that will be used as input weight has %s e
 encoder_input_data = np.array(articles, dtype='float32')
 decoder_input_data = np.array(headlines, dtype='float32')
 decoder_target_data = np.zeros(
-    (len(headlines), max_decoder_seq_len),
+    (len(headlines), max_decoder_seq_len, num_decoder_tokens),
     dtype='float32')
 
 # Prepare target headline for teacher learning
-for idx, headline in enumerate(decoder_input_data):
-    shifted = np.zeros(shape=max_headline_len)
+for idx, headline in enumerate(headlines):
+    shifted = np.zeros(shape=(max_headline_len, num_decoder_tokens))
     for time in range(1, max_headline_len):
-        shifted[time] = headline[time - 1]
+        shifted[time][headline[time - 1]] = 1.0
 
     decoder_target_data[idx] = shifted
 
@@ -134,37 +134,51 @@ latent_dim = 256  # Latent dimensionality of the encoding space.
 # Define an input sequence and process it.
 
 
-deep_inputs = Input(shape=(max_encoder_seq_len,), name='ENCODER INPUT')
-embedding = Embedding(
+encoder_inputs = Input(shape=(max_encoder_seq_len,), name='ENCODER_INPUT')
+encoder_embedding = Embedding(
     input_dim=num_encoder_tokens,
     output_dim=glove_embedding_len,
     input_length=max_encoder_seq_len,
     weights=[embeddings],
     trainable=False,
-    name='EMBEDDING LAYER'
-)(deep_inputs)
+    name='ENCODER_EMBEDDING'
+)(encoder_inputs)
 encoder = LSTM(latent_dim, return_state=True, name="ENCODER")
-encoder_outputs, state_h, state_c = encoder(embedding)
+encoder_outputs, state_h, state_c = encoder(encoder_embedding)
 
 # We discard `encoder_outputs` and only keep the states.
 encoder_states = [state_h, state_c]
 
 # Set up the decoder, using `encoder_states` as initial state.
-decoder_inputs = Input(shape=(None, max_decoder_seq_len), name="DECODER INPUT")
+decoder_inputs = Input(shape=(max_decoder_seq_len, ), name="DECODER_INPUT")
+
+decoder_embedding = Embedding(
+    input_dim=num_decoder_tokens,
+    output_dim=glove_embedding_len,
+    input_length=max_decoder_seq_len,
+    weights=[embeddings],
+    trainable=False,
+    name='DECODER_EMBEDDING'
+)(decoder_inputs)
 
 # We set up our decoder to return full output sequences,
 # and to return internal states as well. We don't use the
 # return states in the training model, but we will use them in inference.
-decoder_lstm = LSTM(latent_dim, return_sequences=True, return_state=True, name="DECODER")
-decoder_outputs, _, _ = decoder_lstm(decoder_inputs,
-                                     initial_state=encoder_states)
+decoder = LSTM(latent_dim, return_sequences=True, return_state=True, name="DECODER")
+decoder_outputs, _, _ = decoder(decoder_embedding,
+                                initial_state=encoder_states)
 
-decoder_dense = Dense(num_decoder_tokens, activation='softmax', name="DECODER OUTPUT")
-decoder_outputs = decoder_dense(decoder_outputs)
+decoder_dense = Dense(num_decoder_tokens, activation='softmax', name="DECODER_DENSE")
+
+decoder_time_distributed = TimeDistributed(decoder_dense, name="DECODER_DISTRIBUTED_OUTPUT")
+
+decoder_outputs = decoder_time_distributed(decoder_outputs)
 
 # Define the model that will turn
 # `encoder_input_data` & `decoder_input_data` into `decoder_target_data`
-model = Model(inputs=[deep_inputs, decoder_inputs], outputs=decoder_outputs)
+model = Model(inputs=[encoder_inputs, decoder_inputs], outputs=decoder_outputs)
+
+model.summary()
 
 # Run training
 model.compile(optimizer='rmsprop', loss='categorical_crossentropy')
