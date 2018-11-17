@@ -2,6 +2,8 @@ import pandas as pd
 import nltk
 import pickle
 
+from keras_preprocessing.text import Tokenizer
+
 data = pd.read_csv('../dataset/articles1.csv').iloc[:500]
 
 # lower all strings
@@ -19,6 +21,9 @@ for t, d in zip(tkn_head, tkn_desc):
     out.append([t, d])
 
 
+
+print(t)
+
 # Save to pickle
-with open('A1_TKN_500.pkl', 'wb') as handle:
-    pickle.dump(out, handle)
+#with open('A1_TKN_500.pkl', 'wb') as handle:
+#    pickle.dump(out, handle)

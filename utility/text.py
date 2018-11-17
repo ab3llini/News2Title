@@ -1,5 +1,5 @@
 from collections import Counter
-
+import numpy as np
 
 def get_vocabulary(list_):
 
@@ -77,3 +77,29 @@ def truncate_sentences(sentences, maxlen):
         truncated.append(sentence[:maxlen])
 
     return truncated
+
+
+def get_embeddable(words, word2index):
+    embeddable = []
+    for word in words:
+        if word in word2index:
+            embeddable.append(word)
+    return embeddable
+
+
+def print_first_n_pairs(a, b, n):
+    for (i, (a, b)) in enumerate(zip(a[:n], b[:n])):
+        print(str(i) + ')\n' + str(a) + '\n' + str(b))
+
+
+def get_reduced_embedding_matrix(vocab, glove_embeddings, word2index, glove_size):
+
+    new_word2index = {}
+    new_embedding = np.zeros((len(vocab), glove_size))
+
+    for index, word in enumerate(vocab):
+        new_word2index[word] = index
+        new_embedding[index] = glove_embeddings[word2index[word]]
+
+    return new_word2index, new_embedding
+
