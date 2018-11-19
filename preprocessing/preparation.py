@@ -59,7 +59,7 @@ def index_mapper(vocab):
 
 word2idx, idx2word = index_mapper(vocab)
 
-print("loading GloVe embeddings")
+print("loading GloVe embedding")
 
 # Load glove model
 glove = pd.read_table('../embedding/glove.6B.100d.txt', sep=" ", index_col=0, header=None, quoting=csv.QUOTE_NONE)
@@ -79,7 +79,7 @@ def find_closest_word(v):
 
 plot_distr(sorted_voc, vocab)
 
-print("Creating GloVe embeddings for our voc")
+print("Creating GloVe embedding for our voc")
 print("In total there are ", len(sorted_voc), " tokens")
 
 
@@ -90,7 +90,7 @@ for w in tqdm(sorted_voc):
     except Exception as e:
         sorted_voc.remove(w)
 
-print("Found embeddings for ", len(sorted_voc), " tokens")
+print("Found embedding for ", len(sorted_voc), " tokens")
 
 
 plot_distr(sorted_voc, vocab)

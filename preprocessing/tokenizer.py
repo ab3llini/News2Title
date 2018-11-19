@@ -4,7 +4,9 @@ import pickle
 
 from keras_preprocessing.text import Tokenizer
 
-data = pd.read_csv('../dataset/articles1.csv').iloc[:500]
+data = pd.read_csv('../dataset/articles1.csv')
+
+
 
 # lower all strings
 data['title'] = data['title'].str.lower()
@@ -14,7 +16,6 @@ data['content'] = data['content'].str.lower()
 tkn_head = data['title'].apply(lambda row: nltk.word_tokenize(row)).tolist()
 tkn_desc = data['content'].apply(lambda row: nltk.word_tokenize(row)).tolist()
 
-print(tkn_head[0])
 
 out = []
 for t, d in zip(tkn_head, tkn_desc):
@@ -25,5 +26,5 @@ for t, d in zip(tkn_head, tkn_desc):
 print(t)
 
 # Save to pickle
-#with open('A1_TKN_500.pkl', 'wb') as handle:
-#    pickle.dump(out, handle)
+with open('A1_TKN_FULL_TRUNC.pkl', 'wb') as handle:
+   pickle.dump(out, handle)

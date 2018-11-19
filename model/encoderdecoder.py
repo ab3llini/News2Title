@@ -1,30 +1,80 @@
 import pickle
+
+from keras.callbacks import EarlyStopping, ModelCheckpoint
+
 from embedding.load_glove_embeddings import load_glove_embeddings
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Model
 from keras.layers import Input, LSTM, Dense, Embedding, TimeDistributed
+from sklearn.model_selection import train_test_split
 from utility.text import *
+from utility.model import *
+import random
+
+# ---------------------------------------------------------------------------------
+# --------------------------------- CONFIGURATION ---------------------------------
+# ---------------------------------------------------------------------------------
 
 
+# Dataset file name
+tokenized = '../preprocessing/A1_TKN_5000.pkl'
 
 # Define which embedding to use
 glove_embedding_len = 50
 
+# Let's define some control variables, such as the max length of heads and desc
+# that we will use in our model
+max_headline_len = 15
+max_article_len = 40
+
+# Split data into train and test
+# IMPORTANT, chunk size should be COHERENT with the split
+# For example : 5000 samples, ratio = 0.1 -> 500 samples will be used for testing.
+# We have 4500 samples left for training.
+# We cannot set chunk size to 1000 because 4500 is not a multiple of 1000! <------------------IMPORTANT
+# The same reasoning goes for the batch size.
+# With a chunk of 450 elements, we cannot set a batch size of 100! <------------------IMPORTANT
+test_ratio = 0.1
+chunk_size = 500  # Size of each chunk
+batch_size = 50  # Batch size for training on each chunk
+tot_epochs = 1  # Number of epochs to train for.
+epochs_per_chunk = 2  # Number of epochs to train each chunk on
+latent_dim = 256  # Latent dimensionality of the encoding space.
+
+# Output layer config
+dense_activation = 'softmax'
+
+# Fit config
+optimizer = 'rmsprop'
+loss = 'categorical_crossentropy'
+
+# Model save name
+model_name = 'n2t_5000'
+
+# Overfitting config
+callbacks = [EarlyStopping(monitor='val_loss', patience=0, min_delta=0),
+             ModelCheckpoint(filepath=model_name+'_earlystopped_.h5', monitor='val_loss', save_best_only=True)]
+
+# -------------------------------------------------------------------------------------
+# --------------------------------- END CONFIGURATION ---------------------------------
+# -------------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------------
+# --------------------------------- DATA PROCESSING -----------------------------------
+# -------------------------------------------------------------------------------------
+
 # Read tokenized news and titles
-with open('../preprocessing/A1_TKN_500.pkl', 'rb') as handle:
+with open(tokenized, 'rb') as handle:
     data = np.array(pickle.load(handle))
     headlines, articles = data[:, 0], data[:, 1]
+
+
 
 # Print how many articles are present in the pickle
 # Print even some statistics
 print('Loaded %s articles' % len(articles))
 print('Headline length (words): avg = %s, min = %s, max = %s' % get_text_stats(headlines))
 print('Article length (words): avg = %s, min = %s, max = %s' % get_text_stats(articles))
-
-# Let's define some control variables, such as the max length of heads and desc
-# that we will use in our model
-max_headline_len = 25
-max_article_len = 50
 
 # Resize the headlines and the articles to the max length
 headlines = truncate_sentences(headlines, max_headline_len)
@@ -55,7 +105,6 @@ embeddable = get_embeddable(vocabulary_sorted, word2index)
 
 # Shrink the embedding matrix as much as possible, by keeping only the embeddings of the words in the vocabulary
 word2index, embeddings = get_reduced_embedding_matrix(embeddable, embeddings, word2index, glove_embedding_len)
-
 
 # Save New Embeddings Length to show shrink ratio
 NEL = len(embeddings)
@@ -106,32 +155,33 @@ print('\nNumber of unique words (input/output tokens) :', num_encoder_tokens)
 # See the difference
 print('\nWhole glove embedding matrix that will be used as input weight has %s elements:' % len(embeddings))
 
-# Prepare final inputs
-encoder_input_data = np.array(articles, dtype='float32')
-decoder_input_data = np.array(headlines, dtype='float32')
-decoder_target_data = np.zeros(
-    (len(headlines), max_decoder_seq_len, num_decoder_tokens),
-    dtype='float32')
+print('\nShuffling data..')
+# Shuffle all the articles and save some for test
+random.seed(5)
+random.shuffle(headlines)
+random.shuffle(articles)
 
-# Prepare target headline for teacher learning
-for idx, headline in enumerate(headlines):
-    shifted = np.zeros(shape=(max_headline_len, num_decoder_tokens))
-    for time in range(1, max_headline_len):
-        shifted[time][headline[time - 1]] = 1.0
+print('\nSplitting train and test data..')
+articles_tr, articles_ts, headlines_tr, headlines_ts = train_test_split(articles, headlines, test_size=0.1)
 
-    decoder_target_data[idx] = shifted
+# Prepare inputs for current chunk
+encoder_input_data_ts, decoder_input_data_ts, decoder_target_data_ts = get_inputs_outputs(
+    articles_ts,
+    headlines_ts,
+    max_decoder_seq_len,
+    num_decoder_tokens,
+    max_headline_len
+)
 
-print(str(decoder_input_data[0]))
-print(str(decoder_target_data[0]))
+# -----------------------------------------------------------------------------------------
+# --------------------------------- END DATA PROCESSING -----------------------------------
+# -----------------------------------------------------------------------------------------
 
+# ----------------------------------------------------------------------------------------
+# ----------------------------------------- MODEL ----------------------------------------
+# ----------------------------------------------------------------------------------------
 
-# Model definition - KERAS FUNCTIONAL API
-# ---------------------------------------
-batch_size = 50  # Batch size for training.
-epochs = 100  # Number of epochs to train for.
-latent_dim = 256  # Latent dimensionality of the encoding space.
-
-# Define an input sequence and process it.
+print('\nBuilding model')
 
 
 encoder_inputs = Input(shape=(max_encoder_seq_len,), name='ENCODER_INPUT')
@@ -168,7 +218,7 @@ decoder = LSTM(latent_dim, return_sequences=True, return_state=True, name="DECOD
 decoder_outputs, _, _ = decoder(decoder_embedding,
                                 initial_state=encoder_states)
 
-decoder_dense = Dense(num_decoder_tokens, activation='softmax', name="DECODER_DENSE")
+decoder_dense = Dense(num_decoder_tokens, activation=dense_activation, name="DECODER_DENSE")
 
 decoder_time_distributed = TimeDistributed(decoder_dense, name="DECODER_DISTRIBUTED_OUTPUT")
 
@@ -181,13 +231,39 @@ model = Model(inputs=[encoder_inputs, decoder_inputs], outputs=decoder_outputs)
 model.summary()
 
 # Run training
-model.compile(optimizer='rmsprop', loss='categorical_crossentropy')
+model.compile(optimizer=optimizer, loss=loss)
 
+total_chunks = round(len(headlines_tr) / chunk_size)
 
-model.fit([encoder_input_data, decoder_input_data], decoder_target_data,
-          batch_size=batch_size,
-          epochs=epochs,
-          validation_split=0.2)
+for epoch in range(tot_epochs):
+    print("+++++++++ Starting  epoch %s +++++++++" % (epoch + 1))
+    for i in range(total_chunks):
+        print("Working on chunk %d/%d" % ((i+1), total_chunks))
+        if i != total_chunks - 1:
+            X = articles_tr[i * chunk_size: i * chunk_size + chunk_size]
+            Y = headlines_tr[i * chunk_size: i * chunk_size + chunk_size]
+        else:
+            X = articles_tr[i * chunk_size:]
+            Y = headlines_tr[i * chunk_size:]
+
+        # Prepare inputs for current chunk
+        encoder_input_data, decoder_input_data, decoder_target_data = get_inputs_outputs(
+            X,
+            Y,
+            max_decoder_seq_len,
+            num_decoder_tokens,
+            max_headline_len
+        )
+
+        model.fit(x=[encoder_input_data, decoder_input_data], y=decoder_target_data,
+                  batch_size=batch_size,
+                  epochs=epochs_per_chunk,
+                  validation_data=([encoder_input_data_ts, decoder_input_data_ts], decoder_target_data_ts))
+
 # Save model
-model.save('s2s.h5')
+model.save(model_name + '.h5')
+
+# ----------------------------------------------------------------------------------------
+# ------------------------------------- END MODEL ----------------------------------------
+# ----------------------------------------------------------------------------------------
 

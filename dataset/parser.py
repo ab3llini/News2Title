@@ -6,6 +6,7 @@ import pickle
 import pymongo
 import tldextract
 
+
 def striphtml(data):
     p = re.compile(r'<.*?>')
     return p.sub('', str(data))
