@@ -4,7 +4,9 @@ import pickle
 
 from keras_preprocessing.text import Tokenizer
 
-data = pd.read_csv('../dataset/articles1.csv')
+SIZE = 5000
+
+data = pd.read_csv('../dataset/articles1.csv').iloc[:SIZE]
 
 
 
@@ -26,5 +28,5 @@ for t, d in zip(tkn_head, tkn_desc):
 print(t)
 
 # Save to pickle
-with open('A1_TKN_FULL_TRUNC.pkl', 'wb') as handle:
+with open('A1_TKN_'+SIZE+'.pkl', 'wb') as handle:
    pickle.dump(out, handle)
