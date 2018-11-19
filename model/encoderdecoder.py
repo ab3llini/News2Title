@@ -16,10 +16,9 @@ import random
 # --------------------------------- CONFIGURATION ---------------------------------
 # ---------------------------------------------------------------------------------
 
-
 # Dataset file name
 tokenized = '../preprocessing/A1_TKN_5000.pkl'
-
+print(tokenized)
 # Define which embedding to use
 glove_embedding_len = 50
 

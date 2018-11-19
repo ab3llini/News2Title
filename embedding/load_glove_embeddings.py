@@ -1,7 +1,5 @@
 # coding: utf-8
-
 import numpy as np
-
 
 def load_glove_embeddings(fp, embedding_dim, include_empty_char=True):
     """
