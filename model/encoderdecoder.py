@@ -1,6 +1,7 @@
 import pickle
+from datetime import time
 
-from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 
 from embedding.load_glove_embeddings import load_glove_embeddings
 from keras.preprocessing.sequence import pad_sequences
@@ -37,7 +38,7 @@ max_article_len = 40
 test_ratio = 0.1
 chunk_size = 500  # Size of each chunk
 batch_size = 50  # Batch size for training on each chunk
-tot_epochs = 1  # Number of epochs to train for.
+tot_epochs = 10  # Number of epochs to train for.
 epochs_per_chunk = 2  # Number of epochs to train each chunk on
 latent_dim = 256  # Latent dimensionality of the encoding space.
 
@@ -52,8 +53,17 @@ loss = 'categorical_crossentropy'
 model_name = 'n2t_5000'
 
 # Overfitting config
-callbacks = [EarlyStopping(monitor='val_loss', patience=0, min_delta=0),
-             ModelCheckpoint(filepath=model_name+'_earlystopped_.h5', monitor='val_loss', save_best_only=True)]
+early_stopping = EarlyStopping(monitor='val_loss', patience=2, min_delta=0)
+
+# Model checkpoint
+checkpoint = ModelCheckpoint(filepath=model_name+'_earlystopped_.h5', monitor='val_loss', save_best_only=True)
+
+# Tensorboard
+# histogram_freq=1, write_graph=True
+tensorboard = TensorBoard(log_dir="../tensorboard/MODEL")
+
+# Callbacks
+callbacks = [early_stopping, checkpoint, tensorboard]
 
 # -------------------------------------------------------------------------------------
 # --------------------------------- END CONFIGURATION ---------------------------------
@@ -157,12 +167,10 @@ print('\nWhole glove embedding matrix that will be used as input weight has %s e
 
 print('\nShuffling data..')
 # Shuffle all the articles and save some for test
-random.seed(5)
-random.shuffle(headlines)
-random.shuffle(articles)
+# TODO: Add shuffle
 
 print('\nSplitting train and test data..')
-articles_tr, articles_ts, headlines_tr, headlines_ts = train_test_split(articles, headlines, test_size=0.1)
+articles_tr, articles_ts, headlines_tr, headlines_ts = train_test_split(articles, headlines, test_size=test_ratio)
 
 # Prepare inputs for current chunk
 encoder_input_data_ts, decoder_input_data_ts, decoder_target_data_ts = get_inputs_outputs(
@@ -172,6 +180,8 @@ encoder_input_data_ts, decoder_input_data_ts, decoder_target_data_ts = get_input
     num_decoder_tokens,
     max_headline_len
 )
+
+print(encoder_input_data_ts, decoder_input_data_ts, decoder_target_data_ts)
 
 # -----------------------------------------------------------------------------------------
 # --------------------------------- END DATA PROCESSING -----------------------------------
@@ -258,7 +268,9 @@ for epoch in range(tot_epochs):
         model.fit(x=[encoder_input_data, decoder_input_data], y=decoder_target_data,
                   batch_size=batch_size,
                   epochs=epochs_per_chunk,
-                  validation_data=([encoder_input_data_ts, decoder_input_data_ts], decoder_target_data_ts))
+                  validation_data=([encoder_input_data_ts, decoder_input_data_ts], decoder_target_data_ts),
+                  callbacks=callbacks
+                  )
 
 # Save model
 model.save(model_name + '.h5')
