@@ -1,5 +1,6 @@
 from collections import Counter
 import numpy as np
+import random
 
 def get_vocabulary(list_):
 
@@ -95,11 +96,35 @@ def print_first_n_pairs(a, b, n):
 def get_reduced_embedding_matrix(vocab, glove_embeddings, word2index, glove_size):
 
     new_word2index = {}
-    new_embedding = np.zeros((len(vocab), glove_size))
+    voc_len = len(vocab)
+    new_embedding = np.zeros((voc_len + 2, glove_size))  # +2 to account for start and stop tokens
 
     for index, word in enumerate(vocab):
         new_word2index[word] = index
         new_embedding[index] = glove_embeddings[word2index[word]]
 
-    return new_word2index, new_embedding
+    free = []
+
+    for w, _ in word2index.items():
+        if w not in new_word2index:
+            free.append(w)
+            if len(free) > 1:
+                break
+
+    start, stop = free
+
+    # Add start and stop
+    new_word2index[start] = voc_len
+    new_word2index[stop] = voc_len + 1
+
+    new_embedding[voc_len] = glove_embeddings[word2index[start]]
+    new_embedding[voc_len + 1] = glove_embeddings[word2index[stop]]
+
+    # Modify vocab appending objects
+    vocab.append(start)
+    vocab.append(stop)
+
+    print('Picked START TOKEN = "' + start + '"and STOP TOKEN = "' + stop + '"')
+
+    return new_word2index, new_embedding, start, stop
 

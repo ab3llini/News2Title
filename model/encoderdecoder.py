@@ -17,7 +17,7 @@ import random
 # ---------------------------------------------------------------------------------
 
 # Dataset file name
-tokenized = '../preprocessing/A1_TKN_5000.pkl'
+tokenized = '../preprocessing/A1_TKN_500.pkl'
 print(tokenized)
 # Define which embedding to use
 glove_embedding_len = 50
@@ -49,7 +49,7 @@ optimizer = 'rmsprop'
 loss = 'categorical_crossentropy'
 
 # Model save name
-model_name = 'n2t_5000'
+model_name = 'n2t_500'
 
 # Overfitting config
 early_stopping = EarlyStopping(monitor='val_loss', patience=2, min_delta=0)
@@ -113,7 +113,8 @@ OEL = len(embeddings)
 embeddable = get_embeddable(vocabulary_sorted, word2index)
 
 # Shrink the embedding matrix as much as possible, by keeping only the embeddings of the words in the vocabulary
-word2index, embeddings = get_reduced_embedding_matrix(embeddable, embeddings, word2index, glove_embedding_len)
+# This method will return even start and stop token selected randomly using oov words
+word2index, embeddings, START, STOP = get_reduced_embedding_matrix(embeddable, embeddings, word2index, glove_embedding_len)
 
 # Save New Embeddings Length to show shrink ratio
 NEL = len(embeddings)
@@ -130,13 +131,10 @@ print('\nStats after mapping to glove indexes:')
 print('Headline length (indices): avg = %s, min = %s, max = %s' % get_text_stats(headlines))
 print('Article length (indices): avg = %s, min = %s, max = %s' % get_text_stats(articles))
 
-# Now let's recompute the vocabulary
-# In this case of course it will be composed by indices and not words
-# Each index though will have a real corresponding glove embedding
-glove_vocabulary_sorted, glove_vocabulary_counter = get_vocabulary(headlines + articles)
+N_EMBEDDED = len(embeddable)
 
-print('\nSo far, there are %s different glove indices in headlines and articles (after truncate and glove mapping)' % len(glove_vocabulary_sorted))
-print('We found embeddings for %.2f%% of words' % (len(glove_vocabulary_sorted)/len(vocabulary_sorted) * 100.0))
+print('\nSo far, there are %s different glove indices in headlines and articles (after truncate and glove mapping)' % N_EMBEDDED)
+print('We found embeddings for %.2f%% of words' % (N_EMBEDDED/len(vocabulary_sorted) * 100.0))
 
 
 # Now we want to pad the headlines and articles to a fixed length
@@ -150,11 +148,8 @@ print('Article length (indices): avg = %s, min = %s, max = %s' % get_text_stats(
 
 # Now that we have our vocabulary lock 'n loaded we can proceed
 # Now let't translate the latter variables to some others more meaningful for our model
-input_words = glove_vocabulary_sorted
-target_words = glove_vocabulary_sorted
-
-num_encoder_tokens = len(input_words)
-num_decoder_tokens = len(target_words)
+input_words = target_words = embeddable
+num_encoder_tokens = num_decoder_tokens = N_EMBEDDED
 
 max_encoder_seq_len = max_article_len
 max_decoder_seq_len = max_headline_len
@@ -171,13 +166,12 @@ print('\nShuffling data..')
 print('\nSplitting train and test data..')
 articles_tr, articles_ts, headlines_tr, headlines_ts = train_test_split(articles, headlines, test_size=test_ratio)
 
-# Prepare inputs for current chunk
+# Prepare inputs for test data
 encoder_input_data_ts, decoder_input_data_ts, decoder_target_data_ts = get_inputs_outputs(
     articles_ts,
     headlines_ts,
     max_decoder_seq_len,
     num_decoder_tokens,
-    max_headline_len
 )
 
 print(encoder_input_data_ts, decoder_input_data_ts, decoder_target_data_ts)
@@ -261,7 +255,6 @@ for epoch in range(tot_epochs):
             Y,
             max_decoder_seq_len,
             num_decoder_tokens,
-            max_headline_len
         )
 
         model.fit(x=[encoder_input_data, decoder_input_data], y=decoder_target_data,

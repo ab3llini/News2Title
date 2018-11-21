@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def get_inputs_outputs(x, y, max_decoder_seq_len, num_decoder_tokens, max_headline_len):
+def get_inputs_outputs(x, y, max_decoder_seq_len, num_decoder_tokens):
 
     # Prepare inputs for current chunk
     encoder_input_data = np.array(x)
@@ -11,9 +11,9 @@ def get_inputs_outputs(x, y, max_decoder_seq_len, num_decoder_tokens, max_headli
 
     # Prepare target headline for teacher learning
     for idx, headline in enumerate(y):
-        shifted = np.zeros(shape=(max_headline_len, num_decoder_tokens))
-        for time in range(1, max_headline_len):
-            shifted[time][headline[time - 1]] = 1.0
+        shifted = np.zeros(shape=(max_decoder_seq_len, num_decoder_tokens))
+        for time in range(max_decoder_seq_len - 1):  # The last Should be stop word
+            shifted[time][headline[time + 1]] = 1.0
 
         decoder_target_data[idx] = shifted
 
