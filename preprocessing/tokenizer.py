@@ -22,7 +22,6 @@ tkn_desc = data['content'].apply(lambda row: nltk.word_tokenize(row)).tolist()
 out = []
 for t, d in zip(tkn_head, tkn_desc):
     out.append([t, d])
-    print(t)
 
 # Save to pickle
 with open('A1_TKN_'+str(SIZE)+'.pkl', 'wb') as handle:
