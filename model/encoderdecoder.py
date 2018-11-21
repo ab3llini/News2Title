@@ -1,7 +1,8 @@
 import pickle
 
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
-
+import sys
+print(sys.path)
 import embedding.load_glove_embeddings as emb
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Model
