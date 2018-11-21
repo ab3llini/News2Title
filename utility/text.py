@@ -72,10 +72,17 @@ def map_to_glove_index(sentences, word2index):
     return indexed
 
 
-def truncate_sentences(sentences, maxlen):
+def truncate_sentences(sentences, max_len, stop_word=None):
     truncated = []
     for sentence in sentences:
-        truncated.append(sentence[:maxlen])
+
+        truncate_idx = max_len
+
+        if stop_word is not None:
+            if stop_word in sentence:
+                truncate_idx = sentence.index(stop_word)
+
+        truncated.append(sentence[:truncate_idx])
 
     return truncated
 
@@ -93,11 +100,15 @@ def print_first_n_pairs(a, b, n):
         print(str(i) + ')\n' + str(a) + '\n' + str(b))
 
 
+def rotate(l, n):
+    return l[n:] + l[:n]
+
+
 def get_reduced_embedding_matrix(vocab, glove_embeddings, word2index, glove_size):
 
     new_word2index = {}
     voc_len = len(vocab)
-    new_embedding = np.zeros((voc_len + 2, glove_size))  # +2 to account for start and stop tokens
+    new_embedding = np.zeros((voc_len + 3, glove_size))  # +3 to account for start, stop and padding tokens
 
     for index, word in enumerate(vocab):
         new_word2index[word] = index
@@ -108,23 +119,52 @@ def get_reduced_embedding_matrix(vocab, glove_embeddings, word2index, glove_size
     for w, _ in word2index.items():
         if w not in new_word2index:
             free.append(w)
-            if len(free) > 1:
+            if len(free) > 2:
                 break
 
-    start, stop = free
+    start, stop, padding = free
 
     # Add start and stop
     new_word2index[start] = voc_len
     new_word2index[stop] = voc_len + 1
+    new_word2index[padding] = voc_len + 2
 
     new_embedding[voc_len] = glove_embeddings[word2index[start]]
     new_embedding[voc_len + 1] = glove_embeddings[word2index[stop]]
+    new_embedding[voc_len + 2] = glove_embeddings[word2index[padding]]
 
     # Modify vocab appending objects
     vocab.append(start)
     vocab.append(stop)
+    vocab.append(padding)
 
-    print('Picked START TOKEN = "' + start + '"and STOP TOKEN = "' + stop + '"')
+    print('\nPicked tokens: START(idx = '+str(voc_len)+') = [' + start + '] | STOP(idx = '+str(voc_len + 1)+') = [' + stop + '] | PADDING(idx = '+str(voc_len + 2)+') = [' + padding + ']')
 
-    return new_word2index, new_embedding, start, stop
+    return new_word2index, new_embedding, voc_len, voc_len + 1, voc_len + 2
+
+
+def add_start_stop_tokens(sentences, start_tkn, stop_tkn, max_len):
+
+    for idx, sentence in enumerate(sentences):
+
+        s_len = len(sentence)
+
+        # First off, add start token
+        if s_len == max_len:
+            # Throw away last word, we do not have space and insert start token in the first place
+            # and end token in the end
+            rotate(sentence, 1)
+            sentence[0] = start_tkn
+            sentence[s_len - 1] = stop_tkn
+
+        elif s_len <= max_len - 2:
+            # Enlarge the sentence by concatenating it with start and stop tokens
+            sentences[idx] = [start_tkn] + sentence + [stop_tkn]
+
+        else:
+            # In this case we have space only for the start token, drop the last word
+            sentence[s_len - 1] = stop_tkn
+            sentences[idx] = [start_tkn] + sentence
+
+
 
