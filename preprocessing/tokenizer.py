@@ -14,7 +14,6 @@ data['content'] = data['content'].str.lower()
 
 # Preprocessing: revoming recurrent headlines (e.g: "- the new york times")
 data['title'] = data['title'].str.replace('- the new york times','')
-#TODO: truncate everything to the first paragraph, see how this can be done.
 
 # Tokenize
 tkn_head = data['title'].apply(lambda row: nltk.word_tokenize(row)).tolist()
