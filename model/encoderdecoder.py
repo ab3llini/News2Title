@@ -1,5 +1,4 @@
 import pickle
-from datetime import time
 
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 
@@ -10,7 +9,6 @@ from keras.layers import Input, LSTM, Dense, Embedding, TimeDistributed
 from sklearn.model_selection import train_test_split
 from utility.text import *
 from utility.model import *
-import random
 
 # ---------------------------------------------------------------------------------
 # --------------------------------- CONFIGURATION ---------------------------------
