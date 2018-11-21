@@ -2,7 +2,7 @@ import pickle
 
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 
-from embedding.load_glove_embeddings import load_glove_embeddings
+import embedding.load_glove_embeddings as emb
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Model
 from keras.layers import Input, LSTM, Dense, Embedding, TimeDistributed
@@ -103,7 +103,7 @@ print("\nThis is what the first headlines/article pair look like after truncate:
 print_first_n_pairs(headlines, articles, 1)
 
 # We need to load now our embeddings in order to proceed with further processing
-word2index, embeddings = load_glove_embeddings(fp='../embedding/glove.6B.' + str(glove_embedding_len) + 'd.txt', embedding_dim=50)
+word2index, embeddings = emb.load_glove_embeddings(fp='../embedding/glove.6B.' + str(glove_embedding_len) + 'd.txt', embedding_dim=50)
 
 # Save Old Embeddings Length to show shrink ratio
 OEL = len(embeddings)
