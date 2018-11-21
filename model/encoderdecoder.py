@@ -5,7 +5,10 @@ import sys
 
 import os
 print(sys.path)
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+sys.path.append('/home/flavio_dipalo/News2Title/')
+sys.path.append('/home/flavio_dipalo/News2Title/embedding/')
+sys.path.append('/home/flavio_dipalo/News2Title/preprocessing/')
+
 import embedding.load_glove_embeddings as emb
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Model
