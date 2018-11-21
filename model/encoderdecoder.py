@@ -4,10 +4,10 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 import sys
 
 import os
-print(sys.path)
 sys.path.append('/home/flavio_dipalo/News2Title/')
 sys.path.append('/home/flavio_dipalo/News2Title/embedding/')
 sys.path.append('/home/flavio_dipalo/News2Title/preprocessing/')
+print(sys.path)
 
 import embedding.load_glove_embeddings as emb
 from keras.preprocessing.sequence import pad_sequences
