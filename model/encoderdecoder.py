@@ -17,7 +17,7 @@ import random
 # ---------------------------------------------------------------------------------
 
 # Dataset file name
-tokenized = '../preprocessing/A1_TKN_500.pkl'
+tokenized = '../preprocessing/A1_TKN_5000.pkl'
 print(tokenized)
 # Define which embedding to use
 glove_embedding_len = 50
@@ -49,7 +49,7 @@ optimizer = 'rmsprop'
 loss = 'categorical_crossentropy'
 
 # Model save name
-model_name = 'n2t_500'
+model_name = 'n2t_5000'
 
 # Overfitting config
 early_stopping = EarlyStopping(monitor='val_loss', patience=2, min_delta=0)
