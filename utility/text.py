@@ -72,15 +72,17 @@ def map_to_glove_index(sentences, word2index):
     return indexed
 
 
-def truncate_sentences(sentences, max_len, stop_word=None):
+def truncate_sentences(sentences, max_len, stop_words=None):
     truncated = []
     for sentence in sentences:
 
         truncate_idx = max_len
 
-        if stop_word is not None:
-            if stop_word in sentence:
-                truncate_idx = sentence.index(stop_word)
+        if stop_words is not None:
+            for word in stop_words:
+                if word in sentence:
+                    truncate_idx = min(sentence.index(word), max_len)
+                    break
 
         truncated.append(sentence[:truncate_idx])
 
@@ -96,8 +98,8 @@ def get_embeddable(words, word2index):
 
 
 def print_first_n_pairs(a, b, n):
-    for (i, (a, b)) in enumerate(zip(a[:n], b[:n])):
-        print(str(i) + ')\n' + str(a) + '\n' + str(b))
+    for (i, (a_, b_)) in enumerate(zip(a[:n], b[:n])):
+        print(str(i) + ')\n' + str(a_) + '\n' + str(b_))
 
 
 def rotate(l, n):
@@ -125,9 +127,9 @@ def get_reduced_embedding_matrix(vocab, glove_embeddings, word2index, glove_size
     start, stop, padding = free
 
     # Add start and stop
-    new_word2index[start] = voc_len
-    new_word2index[stop] = voc_len + 1
-    new_word2index[padding] = voc_len + 2
+    new_word2index['start_token'] = voc_len
+    new_word2index['stop_token'] = voc_len + 1
+    new_word2index['padding_token'] = voc_len + 2
 
     new_embedding[voc_len] = glove_embeddings[word2index[start]]
     new_embedding[voc_len + 1] = glove_embeddings[word2index[stop]]
@@ -138,7 +140,7 @@ def get_reduced_embedding_matrix(vocab, glove_embeddings, word2index, glove_size
     vocab.append(stop)
     vocab.append(padding)
 
-    print('\nPicked tokens: START(idx = '+str(voc_len)+') = [' + start + '] | STOP(idx = '+str(voc_len + 1)+') = [' + stop + '] | PADDING(idx = '+str(voc_len + 2)+') = [' + padding + ']')
+    # print('\nPicked tokens: START(idx = '+str(voc_len)+') = [' + start + '] | STOP(idx = '+str(voc_len + 1)+') = [' + stop + '] | PADDING(idx = '+str(voc_len + 2)+') = [' + padding + ']')
 
     return new_word2index, new_embedding, voc_len, voc_len + 1, voc_len + 2
 
