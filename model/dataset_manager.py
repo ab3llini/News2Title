@@ -12,7 +12,7 @@ root_path = os.path.abspath(os.path.join(this_path, os.pardir))
 
 sys.path.append(root_path)
 
-from model.batch_iterator import BatchIterator
+from model.batch_iterator import BatchIterator,BatchGenerator
 from embedding.load_glove_embeddings import load_glove_embeddings
 from utility.text import *
 from utility.model import *
@@ -232,9 +232,7 @@ class DatasetManager:
         vocabulary = []
 
         for file in (tokenized if self.verbose else tqdm(tokenized)):
-
             print('Working on', file)
-
             # Read tokenized news and titles
             with open(file, 'rb') as handle:
 
@@ -298,7 +296,6 @@ class DatasetManager:
                 pickle.dump(data, handle)
 
     def generate_emebedded_documents(self, tokenized_dir='tokenized/', ):
-
         word2index = DatasetManager.load_word2index()
 
         start_token = word2index['start_token']
@@ -310,14 +307,11 @@ class DatasetManager:
 
         # Generating padded and embedded files
         for file in (tokenized if self.verbose else tqdm(tokenized)):
-
             print('Working on', file)
-
             # Read tokenized news and titles
             with open(file, 'rb') as handle:
                 data = np.array(pickle.load(handle))
                 headlines, articles = data[:, 0], data[:, 1]
-
             if self.verbose:
                 print('Mapping current file to glove embeddings..')
             # We now need to map each word to its corresponding glove embedding index
@@ -412,6 +406,7 @@ class DatasetManager:
 
         print('Generating iterator and testing set.. Using', num_decoder_tokens, 'tokens')
 
+        """
         training_it = BatchIterator(
             max_headline_len=self.max_headline_len,
             num_decoder_tokens=num_decoder_tokens,
@@ -419,11 +414,20 @@ class DatasetManager:
             output_size=block_size,
             verbose=self.verbose
         )
+        """
+        training_gen = BatchGenerator(
+            max_headline_len=self.max_headline_len,
+            num_decoder_tokens=num_decoder_tokens,
+            tokenized_paths=training_set_paths,
+            output_size=block_size,
+            verbose=self.verbose
+        )
+
+
 
         print('Batch iterator successfully created')
 
         # ei = encoder input.. and so on
         ei_ts, di_ts, dt_ts = self.load_test(num_decoder_tokens, testing_set_path)
-
-        return training_it, ei_ts, di_ts, dt_ts
-
+        return training_gen,ei_ts, di_ts, dt_ts
+        #return training_it, ei_ts, di_ts, dt_ts

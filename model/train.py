@@ -1,10 +1,14 @@
+import sys
+import os
+import time
+
+#TODO: remove this part, it is only used for trial without GPU
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 from keras.optimizers import RMSprop
 from keras.losses import categorical_crossentropy
-
-import sys
-import os
 
 this_path = os.path.dirname(os.path.realpath(__file__))
 root_path = os.path.abspath(os.path.join(this_path, os.pardir))
@@ -44,11 +48,11 @@ min_article_len = 10
 # The same reasoning goes for the batch size.
 # With a chunk of 450 elements, we cannot set a batch size of 100! <------------------IMPORTANT
 test_ratio = 0.1
-chunk_size = 500  # Size of each chunk
-batch_size = 50  # Batch size for training on each chunk
+chunk_size = 1000  # Size of each chunk
+batch_size = 1000  # Batch size for training on each chunk
 tot_epochs = 50  # Number of epochs to train for.
-epochs_per_chunk = 2  # Number of epochs to train each chunk on
-latent_dim = 256  # Latent dimensionality of the encoding space.
+epochs_per_chunk = 1  # Number of epochs to train each chunk on
+latent_dim = 64  # Latent dimensionality of the encoding space.
 
 tensorboard_log_dir = os.path.join(root_path, 'tensorboard/News2Title')
 
@@ -95,16 +99,19 @@ mgr = DatasetManager(
 
 # BEFORE PROCEEDING, YOU MUST HAVE ALREADY TOKENIZED DATASET AND CREATED EMBEDDINGS
 # Run these only if you don't have training and testing sets
-# mgr.tokenize(size=10000)
-# mgr.generate_embeddings(glove_embedding_len=glove_embedding_len)
-# mgr.generate_emebedded_documents()
-# mgr.generate_test_set(from_file=os.path.join(root_path, tokenized_path, 'EMB_A0_C1.pkl'), size=500)
+mgr.tokenize(size=3000)
+mgr.generate_embeddings(glove_embedding_len=glove_embedding_len)
+mgr.generate_emebedded_documents()
+mgr.generate_test_set(from_file=os.path.join(root_path, tokenized_path, 'EMB_A0_C1.pkl'), size=500)
 
 print('Before loading embeddings:', available_ram())
 embeddings = DatasetManager.load_embeddings()
 
 print('Before loading test set and allocating first iterator block:', available_ram())
-training_it, ei_ts, di_ts, dt_ts = mgr.get_train_test(block_size=500)
+
+start_time = time.time()
+training_it, ei_ts, di_ts, dt_ts = mgr.get_train_test(block_size=1000)
+print("--- time to load training iterator %s seconds ---" % (time.time() - start_time))
 
 print('Lock \'n loaded.. We are ready to make science, sit tight..')
 
@@ -164,4 +171,3 @@ model.save(model_name + '.h5')
 # ----------------------------------------------------------------------------------------
 # ------------------------------------- END MODEL ----------------------------------------
 # ----------------------------------------------------------------------------------------
-

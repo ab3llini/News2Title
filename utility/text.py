@@ -136,9 +136,9 @@ def get_reduced_embedding_matrix(vocab, glove_embeddings, word2index, glove_size
     new_embedding[voc_len + 2] = glove_embeddings[word2index[padding]]
 
     # Modify vocab appending objects
-    vocab.append(start)
-    vocab.append(stop)
-    vocab.append(padding)
+    vocab.append('start_token')
+    vocab.append('stop_token')
+    vocab.append('padding_token')
 
     # print('\nPicked tokens: START(idx = '+str(voc_len)+') = [' + start + '] | STOP(idx = '+str(voc_len + 1)+') = [' + stop + '] | PADDING(idx = '+str(voc_len + 2)+') = [' + padding + ']')
 

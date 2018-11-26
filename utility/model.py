@@ -5,11 +5,11 @@ def get_inputs_outputs(x, y, max_decoder_seq_len, num_decoder_tokens):
 
     # Prepare inputs for current chunk
     encoder_input_data = np.array(x)
-
     # For what concerns the decoder we need to
     decoder_input_data = np.array(y)
+    length = len(y)
     decoder_target_data = np.zeros(
-        (len(y), max_decoder_seq_len, num_decoder_tokens))
+        (length, max_decoder_seq_len, num_decoder_tokens))
 
     # Prepare target headline for teacher learning
     for idx, headline in enumerate(y):
