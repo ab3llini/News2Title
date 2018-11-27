@@ -7,7 +7,7 @@ from keras.models import load_model
 import numpy as np
 
 # Restore the model and reconstruct the encoder and decoder.
-trained_model = load_model('n2t_5000.h5')
+trained_model = load_model('n2t_full1543297558.h5')
 # We reconstruct the model in order to make inference
 # Encoder reconstruction
 

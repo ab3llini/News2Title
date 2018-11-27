@@ -27,6 +27,8 @@ from model.encoderdecoder import encoder_decoder
 # ---------------------------------------------------------------------------------
 # --------------------------------- CONFIGURATION ---------------------------------
 # ---------------------------------------------------------------------------------
+# Time start, it is used to save the model with a progressive index
+ts = str(int(time.time()))
 
 # Define which embedding to use
 glove_embedding_len = 50
@@ -50,9 +52,9 @@ min_article_len = 10
 # The same reasoning goes for the batch size.
 # With a chunk of 450 elements, we cannot set a batch size of 100! <------------------IMPORTANT
 test_ratio = 0.1
-chunk_size = 1000  # Size of each chunk
-batch_size = 1000  # Batch size for training on each chunk
-tot_epochs = 50  # Number of epochs to train for.
+#chunk_size = 1000  # Size of each chunk
+#batch_size = 1000  # Batch size for training on each chunk
+tot_epochs = 500  # Number of epochs to train for.
 epochs_per_chunk = 1  # Number of epochs to train each chunk on
 latent_dim = 64  # Latent dimensionality of the encoding space.
 
@@ -69,7 +71,7 @@ loss = 'categorical_crossentropy'
 model_name = 'n2t_full'
 
 # Overfitting config
-early_stopping = EarlyStopping(monitor='val_loss', patience=2, min_delta=0)
+early_stopping = EarlyStopping(monitor='val_loss', patience=5, min_delta=0)
 
 # Model checkpoint
 # checkpoint = ModelCheckpoint(filepath=model_name+'_earlystopped_.h5', monitor='val_loss', save_best_only=True)
@@ -89,7 +91,6 @@ callbacks = [early_stopping, tensorboard]
 # -------------------------------------------------------------------------------------
 # --------------------------------- DATA PROCESSING -----------------------------------
 # -------------------------------------------------------------------------------------
-
 
 mgr = DatasetManager(
     max_headline_len=max_headline_len,
@@ -153,16 +154,17 @@ data_generator = DataGenerator(max_decoder_seq_len=max_headline_len, decoder_tok
 model.fit_generator(
               generator=data_generator.generate_train(),
               validation_data=data_generator.generate_test(),
-              validation_steps=1,
-              epochs=10,
+              validation_steps=data_generator.get_steps_validation(),
+              epochs=tot_epochs,
               max_queue_size=2,
               use_multiprocessing=False,
               verbose=2,
-              steps_per_epoch=276,
+              steps_per_epoch=data_generator.get_steps_per_epoch(),
               callbacks=callbacks
               )
 # Save model
-model.save(model_name + '.h5')
+print('Saving model...')
+model.save(model_name +ts+ '.h5')
 # ----------------------------------------------------------------------------------------
 # ------------------------------------- END MODEL ----------------------------------------
 # ----------------------------------------------------------------------------------------
