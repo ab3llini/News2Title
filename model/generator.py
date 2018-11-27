@@ -4,6 +4,7 @@ import keras
 import pickle
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 from utility.model import get_inputs_outputs
 from model.dataset_manager import DatasetManager
@@ -21,10 +22,24 @@ import numpy as np
 
 class DataGenerator():
 
-    def __init__(self,max_decoder_seq_len,decoder_tokens,batch_size=500):
+    def __init__(self,max_decoder_seq_len,decoder_tokens,test_size=0.33):
+        this_path = os.path.dirname(os.path.realpath(__file__))
+        root_path = os.path.abspath(os.path.join(this_path, os.pardir))
+        embedding_prefix = 'EMB_'
+        tokenized_prefix = 'A'
+        tokenized_path = os.path.join(root_path, 'tokenized/')
+        filelist = []
+        import ntpath
+
+        for f in os.listdir(tokenized_path):
+            if ntpath.basename(f).startswith(embedding_prefix + tokenized_prefix):
+                filelist.append(os.path.join(tokenized_path, f))
+        train_list,test_list = train_test_split(filelist, test_size=test_size, random_state=42)
+
+        self.train_list = train_list
+        self.test_list = test_list
         self.max_decoder_seq_len = max_decoder_seq_len
         self.decoder_tokens = decoder_tokens
-        self.batch_size = batch_size
 
     def __len__(self):
         'Denotes the number of batches per epoch'
@@ -37,27 +52,21 @@ class DataGenerator():
             articles = list(data[:, 1])
             return headlines, articles, data.shape[0]
 
-    def chunks(self,l, n):
-        """Yield successive n-sized chunks from l."""
-        for i in range(0, len(l), n):
-            return l[i:i + n]
-
-    def generate_data(self):
-        this_path = os.path.dirname(os.path.realpath(__file__))
-        root_path = os.path.abspath(os.path.join(this_path, os.pardir))
-
-        embedding_prefix = 'EMB_'
-        tokenized_prefix = 'A'
-        tokenized_path = os.path.join(root_path, 'tokenized/')
-        filelist = []
-        import ntpath
-        for f in os.listdir(tokenized_path):
-            if ntpath.basename(f).startswith(embedding_prefix + tokenized_prefix):
-                filelist.append(os.path.join(tokenized_path, f))
-
-        #filelist = [filelist[0]]
+    def generate_train(self):
         while True:
-            for file in tqdm(filelist):
+            for file in tqdm(self.train_list):
+                headline, articles,file_length = self.load_tokens(file)
+                encoder_input_data, decoder_input_data, decoder_target_data = get_inputs_outputs(
+                                                                                             x=articles,
+                                                                                             y=headline,
+                                                                                             max_decoder_seq_len=self.max_decoder_seq_len,
+                                                                                             num_decoder_tokens = self.decoder_tokens
+                                                                                             )
+                yield [encoder_input_data,decoder_input_data], decoder_target_data
+
+    def generate_test(self):
+        while True:
+            for file in tqdm(self.test_list):
                 headline, articles,file_length = self.load_tokens(file)
                 encoder_input_data, decoder_input_data, decoder_target_data = get_inputs_outputs(
                                                                                              x=articles,

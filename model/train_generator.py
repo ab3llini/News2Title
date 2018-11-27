@@ -147,19 +147,22 @@ print('Access tensorboard at http://35.225.34.25')
 print('*' * 100)
 print('*' * 100)
 
-print('embedding shape',embeddings.shape[0])
+data_generator = DataGenerator(max_decoder_seq_len=max_headline_len, decoder_tokens=embeddings.shape[0],test_size=0.20)
 
-train_generator = DataGenerator(max_decoder_seq_len=max_headline_len,decoder_tokens=embeddings.shape[0],batch_size=200)
 #TODO: steps_per_epoch is missing the correct termination for each epoch.
-model.fit_generator(generator=train_generator.generate_data(),
+model.fit_generator(
+              generator=data_generator.generate_train(),
+              validation_data=data_generator.generate_test(),
+              validation_steps=1,
               epochs=10,
+              max_queue_size=2,
+              use_multiprocessing=False,
               verbose=2,
-              steps_per_epoch=14,
-              pickle_safe=False)
-
+              steps_per_epoch=276,
+              callbacks=callbacks
+              )
 # Save model
 model.save(model_name + '.h5')
-
 # ----------------------------------------------------------------------------------------
 # ------------------------------------- END MODEL ----------------------------------------
 # ----------------------------------------------------------------------------------------

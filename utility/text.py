@@ -106,41 +106,43 @@ def rotate(l, n):
     return l[n:] + l[:n]
 
 
-def get_reduced_embedding_matrix(vocab, glove_embeddings, word2index, glove_size):
+def get_reduced_embedding_matrix(vocab, glove_embeddings, word2index, glove_size,truncate_embedding_matrix_to=None):
 
     new_word2index = {}
     voc_len = len(vocab)
-    new_embedding = np.zeros((voc_len + 3, glove_size))  # +3 to account for start, stop and padding tokens
-
-    for index, word in enumerate(vocab):
-        new_word2index[word] = index
-        new_embedding[index] = glove_embeddings[word2index[word]]
-
-    free = []
-
-    for w, _ in word2index.items():
-        if w not in new_word2index:
-            free.append(w)
-            if len(free) > 2:
-                break
-
-    start, stop, padding = free
+    if truncate_embedding_matrix_to:
+        voc_len = truncate_embedding_matrix_to
+    new_embedding = np.zeros((voc_len + 4, glove_size))  # +3 to account for start, stop and padding tokens
 
     # Add start and stop
     new_word2index['start_token'] = voc_len
     new_word2index['stop_token'] = voc_len + 1
     new_word2index['padding_token'] = voc_len + 2
+    new_word2index['unknown_token'] = voc_len + 3
 
-    new_embedding[voc_len] = glove_embeddings[word2index[start]]
-    new_embedding[voc_len + 1] = glove_embeddings[word2index[stop]]
-    new_embedding[voc_len + 2] = glove_embeddings[word2index[padding]]
+    new_embedding[voc_len] = glove_embeddings[voc_len]
+    new_embedding[voc_len + 1] = glove_embeddings[voc_len + 1]
+    new_embedding[voc_len + 2] = glove_embeddings[voc_len + 2]
+    new_embedding[voc_len + 3] = glove_embeddings[voc_len + 3]
 
     # Modify vocab appending objects
     vocab.append('start_token')
     vocab.append('stop_token')
     vocab.append('padding_token')
+    vocab.append('unknown_token')
 
-    # print('\nPicked tokens: START(idx = '+str(voc_len)+') = [' + start + '] | STOP(idx = '+str(voc_len + 1)+') = [' + stop + '] | PADDING(idx = '+str(voc_len + 2)+') = [' + padding + ']')
+    for index, word in enumerate(vocab):
+        if truncate_embedding_matrix_to:
+            # if this option is enabled then only the first n words are mapped to the relative embedding, all the
+            # other words are mapped into the unknown token.
+            if index > truncate_embedding_matrix_to-1:
+                new_word2index[word] = voc_len + 3
+            else:
+                new_word2index[word] = index
+                new_embedding[index] = glove_embeddings[word2index[word]]
+        else:
+            new_word2index[word] = index
+            new_embedding[index] = glove_embeddings[word2index[word]]
 
     return new_word2index, new_embedding, voc_len, voc_len + 1, voc_len + 2
 

@@ -2,10 +2,6 @@ import sys
 import os
 import time
 
-#TODO: remove this part, it is only used for trial without GPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
-
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 from keras.optimizers import RMSprop
 from keras.losses import categorical_crossentropy
@@ -38,7 +34,6 @@ max_headline_len = 20
 max_article_len = 30
 min_headline_len = 5
 min_article_len = 10
-
 
 # Split data into train and test
 # IMPORTANT, chunk size should be COHERENT with the split

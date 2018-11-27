@@ -64,7 +64,6 @@ print("loading GloVe embedding")
 # Load glove model
 glove = pd.read_table('../embedding/glove.6B.100d.txt', sep=" ", index_col=0, header=None, quoting=csv.QUOTE_NONE)
 
-
 words_matrix = glove.as_matrix()
 
 def vec(w):

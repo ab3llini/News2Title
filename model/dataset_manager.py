@@ -276,7 +276,8 @@ class DatasetManager:
             vocabulary,
             embeddings,
             word2index,
-            glove_embedding_len
+            glove_embedding_len,
+            truncate_embedding_matrix_to = 2000,
         )
 
         if self.verbose:
@@ -301,6 +302,7 @@ class DatasetManager:
         start_token = word2index['start_token']
         stop_token = word2index['stop_token']
         padding_token = word2index['padding_token']
+
 
         tokenized = [os.path.join(root_path, tokenized_dir, f) for f in
             os.listdir(os.path.join(root_path, tokenized_dir))]
