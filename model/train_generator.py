@@ -147,6 +147,7 @@ print('If it complains about locales, run "export LC_ALL=C"')
 print('Access tensorboard at http://35.225.34.25')
 print('*' * 100)
 print('*' * 100)
+#
 
 data_generator = DataGenerator(max_decoder_seq_len=max_headline_len, decoder_tokens=embeddings.shape[0],test_size=0.20)
 
