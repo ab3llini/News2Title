@@ -109,13 +109,14 @@ mgr = DatasetManager(
 # mgr.generate_emebedded_documents()
 # mgr.generate_test_set(from_file=os.path.join(root_path, tokenized_path, 'EMB_A0_C1.pkl'), size=500)
 
+# TFIDF
+# TODO: INCOMPLETE !!!!! FIX DIVISION BY ZERO IN GEN_EMBEDDINGS
 # mgr.compute_tfidf(max_features=10000, save_to_file=True, f_name='TF_IDF', glove_embedding_len=50)
-mgr.tokenize(only_tfidf=True, tfidf_file='TF_IDF_10000.pkl', size=500)
-mgr.generate_embeddings(glove_embedding_len=glove_embedding_len)
-mgr.generate_emebedded_documents()
-mgr.generate_test_set(from_file=os.path.join(root_path, tokenized_path, 'EMB_A0_C1.pkl'), size=500)
+# mgr.tokenize(only_tfidf=True, tfidf_file='TF_IDF_10000.pkl', size=500)
+# mgr.generate_embeddings(glove_embedding_len=glove_embedding_len)
+# mgr.generate_emebedded_documents()
+# mgr.generate_test_set(from_file=os.path.join(root_path, tokenized_path, 'EMB_A0_C1.pkl'), size=500)
 
-raise Exception("STOPPING")
 
 print('Before loading embeddings:', available_ram())
 embeddings = DatasetManager.load_embeddings()
