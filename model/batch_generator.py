@@ -14,21 +14,14 @@ dataset_path = os.path.join(root_path, 'dataset/')
 tokenized_path = os.path.join(root_path, 'tokenized/')
 embedding_path = os.path.join(root_path, 'embedding/')
 
-from utility.monitor import *
-from utility.model import *
 
-
-def shift_list(n, data):
-    for _ in range(n):
-        data.append(data.pop(0))
-
-
-class BatchIterator:
+class BatchGenerator:
     def __init__(self,
                  max_headline_len,
                  num_decoder_tokens,
                  tokenized_paths=None,
                  output_size=5000,
+                 training_batch=500,
                  verbose=False,
                  ):
 
@@ -96,7 +89,8 @@ class BatchIterator:
                         print('[*] Tokenized files fetched so far: ', d, '/', t)
                     self.paths_left -= 1
                     read_in_prev_file = qty
-
+                '''
+                We are excluding the part where everything returns to the beginning. 
                 else:
                     self.current_idx = 0  # Will start from the beginning next time
                     shift_list(1, self.tokenized_paths)  # Go to next file next time
@@ -104,7 +98,7 @@ class BatchIterator:
                     self.done = True
                     if self.verbose:
                         print('[*] This block contains elements already fetched to reach output_size')
-
+                '''
             else:
                 self.current_idx += (self.output_size - read_in_prev_file)
 
@@ -112,7 +106,6 @@ class BatchIterator:
                     t = len(self.tokenized_paths)
                     d = t - self.paths_left
                     print('[*] Tokenized files fetched so far: ', d, '/', t)
-
 
         try:
             encoder_input_data, decoder_input_data, decoder_target_data = get_inputs_outputs(
@@ -135,5 +128,11 @@ class BatchIterator:
         return self
 
     def __next__(self):
-        return self.load_data()
-
+        import tqdm
+        while True:
+            encoder_input_data, decoder_input_data, decoder_target_data = self.load_data()
+            for i in tqdm(range(self.output_size/self.training_batch)):
+                slice_enc_input = encoder_input_data[i*self.training_batch:(i+1)*self.training_batch]
+                slice_dec_input = decoder_input_data[i*self.training_batch:(i+1)*self.training_batch]
+                slice_dec_target = decoder_target_data[i*self.training_batch:(i+1)*self.training_batch]
+                yield [slice_enc_input, slice_dec_input], slice_dec_target

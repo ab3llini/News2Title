@@ -2,6 +2,8 @@ import os
 import pandas as pd
 import nltk
 import pickle
+
+from sklearn.feature_extraction.text import TfidfVectorizer
 from tqdm import tqdm
 import sys
 from keras.preprocessing.sequence import pad_sequences
@@ -12,7 +14,8 @@ root_path = os.path.abspath(os.path.join(this_path, os.pardir))
 
 sys.path.append(root_path)
 
-from model.batch_iterator import BatchIterator,BatchGenerator
+from model.batch_iterator import BatchIterator
+from model.batch_generator import BatchGenerator
 from embedding.load_glove_embeddings import load_glove_embeddings
 from utility.text import *
 from utility.model import *
@@ -24,6 +27,7 @@ root_path = os.path.abspath(os.path.join(this_path, os.pardir))
 dataset_path = os.path.join(root_path, 'dataset/')
 tokenized_path = os.path.join(root_path, 'tokenized/')
 embedding_path = os.path.join(root_path, 'embedding/')
+tfidf_path = os.path.join(root_path, 'TFIDF/')
 
 embedding_prefix = 'EMB_'
 tokenized_prefix = 'A'
@@ -55,7 +59,10 @@ class DatasetManager:
             os.path.join(dataset_path, file) for file in files
         ]
 
-    def tokenize(self, size=10000):
+    def tokenize(self, only_tfidf, tfidf_file=None, size=10000):
+
+        if only_tfidf and tfidf_file is None:
+            raise Exception("You must specify a tfidf file when only_tfidf=True")
 
         if self.verbose:
             print('Tokenization started. Size set to', size)
@@ -92,6 +99,16 @@ class DatasetManager:
             # Remove short articles or headlines
             frame = frame[frame['title'].str.split().apply(len) >= self.min_headline_len]
             frame = frame[frame['content'].str.split().apply(len) >= self.min_article_len]
+
+            if only_tfidf:
+                if self.verbose:
+                    print('Removing all the words which do not appear in tfidf_features.')
+                    print('IMPORTANT: Will lookup the following file:', tfidf_file)
+
+                features = self.load_tfidf_features(tfidf_file)
+
+                frame['title'] = frame['title'].apply(lambda x: ' '.join([w if w in features else '' for w in x.split()]))
+                frame['content'] = frame['content'].apply(lambda x: ' '.join([w if w in features else '' for w in x.split()]))
 
             n_len = frame.shape[0]
 
@@ -168,6 +185,128 @@ class DatasetManager:
             print('All chunks have been processed')
             print('We dropped a total of ' + str(o_len - n_len) + ' news - %.2f%%' % ((1 - n_len/o_len) * 100))
             print('-' * len(path))
+
+    @staticmethod
+    def load_tfidf_features(f_name):
+
+        file = os.path.join(tfidf_path, f_name)
+
+        # Read tokenized news and titles
+        with open(file, 'rb') as handle:
+            features = pickle.load(handle)
+
+        return features
+
+    def compute_tfidf(self,
+                      max_features,
+                      glove_embedding_len,
+                      save_to_file=True,
+                      f_name='TF-IDF',
+                      embedding_dir='embedding/'
+                      ):
+
+        if self.verbose:
+            print('TF-IDF Computation started.')
+            print(available_ram())
+
+        articles, headlines = [], []
+
+        for idx, path in enumerate(self.dataset):
+
+            if self.verbose:
+                print('-' * len(path) + '\nLoading', path)
+
+            # Load frame and drop everything but what we need
+            frame = pd.read_csv(path, encoding='utf8').filter(['title', 'content'])
+
+            # Fill nan values with nothing but replace NaN which is a float and make the script crash
+            frame = frame.fillna('')
+
+            if self.verbose:
+                print('Removing recurrent headlines..')
+
+            # Preprocessing: remove recurrent headlines (e.g: "- the new york times")
+            frame['title'] = frame['title'].str.replace(' - The New York Times', '')
+
+            if self.verbose:
+                print('Removing non-ASCII chars..')
+
+            # Remove all non ASCII chars
+            frame['title'] = frame['title'].replace({r'[^\x00-\x7F]+': ''}, regex=True)
+            frame['content'] = frame['content'].replace({r'[^\x00-\x7F]+': ''}, regex=True)
+
+            if self.verbose:
+                print('Adding headlines and articles in this csv to corpus')
+
+            articles += frame['content'].tolist()
+            headlines += frame['title'].tolist()
+
+            del frame
+
+            if self.verbose:
+                print('Done')
+                print(available_ram())
+
+        if self.verbose:
+            print('Allocating glove word2index in RAM.')
+
+        # We need to load now our embeddings in order to proceed with further processing
+        word2index, _ = load_glove_embeddings(
+            fp=os.path.join(root_path, embedding_dir, 'glove.6B.' + str(glove_embedding_len) + 'd.txt'),
+            embedding_dim=glove_embedding_len)
+
+        if self.verbose:
+            print('Allocated word2index')
+            print(available_ram())
+
+        def tf_idf_tokenizer(text):
+            """
+            Custom tokenizer that returns tokens only if in the embedding 
+            THIS IS REQUIRED! OTHERWISE TF-IDF MIGHT (AND WILL) RETURN NON EMBEDDABLE WORDS!
+            :param text: the text to tokenize, automatically called by sklearn
+            :return: The tokenized text
+            """  # ref : https://www.bogotobogo.com/python/NLTK/tf_idf_with_scikit-learn_NLTK.php
+            stems = []
+            tokens = nltk.word_tokenize(text)
+            for token in tokens:
+                if token in word2index:
+                    stems.append(token)
+            return stems
+
+        if self.verbose:
+            print('Building TF-IDF Vectorizer for', max_features, 'features.. This might take some time')
+
+        # TF-IDF Vectorizer
+        vectorizer = TfidfVectorizer(tokenizer=tf_idf_tokenizer, max_features=max_features, sublinear_tf=True)
+
+        # With sublinear_tf = False or True the most common words are
+        # ['00', '000', '05', '10', '100', '101', '10th', '11', '110', '11th', '12', '120', '125', '13', '130', '14',
+        # '140', '14th', '15', '150', '16', '160', '17', '170', '18', '180', '18th', '19', '1930s', '1950s', '1960',
+        # '1960s', '1963', '1964', '1965', '1967', '1968', '1969', '1970', '1970s', '1971', '1972', '1973', '1974',
+        # '1975', '1976'
+
+        # Learn vocabulary and idf, return term-document matrix.
+        # Returns:
+        # x : sparse matrix, [n_samples, n_features]
+        # Tf-idf-weighted document-term matrix.
+
+        vectorizer.fit_transform(headlines + articles)
+
+        if save_to_file:
+
+            save_path = os.path.join(tfidf_path, f_name + '_' + str(max_features) + '.pkl')
+
+            if self.verbose:
+                print('Saving TF-IDF to file', save_path)
+
+            with open(save_path, 'wb') as handle:
+                pickle.dump(vectorizer.get_feature_names(), handle)
+
+        if self.verbose:
+            print('TF-IDF computation finished successfully!')
+            print(available_ram())
+
+        return vectorizer.get_feature_names()
 
     @staticmethod
     def load_embeddings(f_name='embeddings.pkl'):
@@ -303,7 +442,6 @@ class DatasetManager:
         stop_token = word2index['stop_token']
         padding_token = word2index['padding_token']
 
-
         tokenized = [os.path.join(root_path, tokenized_dir, f) for f in
             os.listdir(os.path.join(root_path, tokenized_dir))]
 
@@ -425,11 +563,10 @@ class DatasetManager:
             verbose=self.verbose
         )
 
-
-
         print('Batch iterator successfully created')
 
         # ei = encoder input.. and so on
         ei_ts, di_ts, dt_ts = self.load_test(num_decoder_tokens, testing_set_path)
         return training_gen,ei_ts, di_ts, dt_ts
         #return training_it, ei_ts, di_ts, dt_ts
+

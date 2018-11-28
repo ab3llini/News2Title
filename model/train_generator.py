@@ -3,14 +3,10 @@ import os
 import time
 
 #TODO: remove this part, it is only used for trial without GPU
-from model.generator import DataGenerator
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
-from keras.optimizers import RMSprop
-from keras.losses import categorical_crossentropy
 
 this_path = os.path.dirname(os.path.realpath(__file__))
 root_path = os.path.abspath(os.path.join(this_path, os.pardir))
@@ -19,6 +15,10 @@ embedding_path = os.path.join(root_path, 'embedding/')
 
 sys.path.append(root_path)
 
+from model.generator import DataGenerator
+from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
+from keras.optimizers import RMSprop
+from keras.losses import categorical_crossentropy
 from model.dataset_manager import DatasetManager
 from utility.model import *
 from utility.monitor import *
@@ -68,7 +68,7 @@ optimizer = 'rmsprop'
 loss = 'categorical_crossentropy'
 
 # Model save name
-model_name = 'n2t_full'
+model_name = 'n2t_full_tfidf'
 
 # Overfitting config
 early_stopping = EarlyStopping(monitor='val_loss', patience=5, min_delta=0)
@@ -102,10 +102,20 @@ mgr = DatasetManager(
 
 # BEFORE PROCEEDING, YOU MUST HAVE ALREADY TOKENIZED DATASET AND CREATED EMBEDDINGS
 # Run these only if you don't have training and testing sets
-#mgr.tokenize(size=500)
-#mgr.generate_embeddings(glove_embedding_len=glove_embedding_len)
-#mgr.generate_emebedded_documents()
-#mgr.generate_test_set(from_file=os.path.join(root_path, tokenized_path, 'EMB_A0_C1.pkl'), size=500)
+# THIS IS WORKING FINE:
+# IF ANY ERROR WITH TFIDF POPS UP, ROLLBACK HERE
+# mgr.tokenize(size=500)
+# mgr.generate_embeddings(glove_embedding_len=glove_embedding_len)
+# mgr.generate_emebedded_documents()
+# mgr.generate_test_set(from_file=os.path.join(root_path, tokenized_path, 'EMB_A0_C1.pkl'), size=500)
+
+# mgr.compute_tfidf(max_features=10000, save_to_file=True, f_name='TF_IDF', glove_embedding_len=50)
+mgr.tokenize(only_tfidf=True, tfidf_file='TF_IDF_10000.pkl', size=500)
+mgr.generate_embeddings(glove_embedding_len=glove_embedding_len)
+mgr.generate_emebedded_documents()
+mgr.generate_test_set(from_file=os.path.join(root_path, tokenized_path, 'EMB_A0_C1.pkl'), size=500)
+
+raise Exception("STOPPING")
 
 print('Before loading embeddings:', available_ram())
 embeddings = DatasetManager.load_embeddings()

@@ -94,6 +94,7 @@ mgr = DatasetManager(
 
 # BEFORE PROCEEDING, YOU MUST HAVE ALREADY TOKENIZED DATASET AND CREATED EMBEDDINGS
 # Run these only if you don't have training and testing sets
+# mgr.compute_tfidf(max_features=10000, save_to_file=True, f_name='TF_IDF', glove_embedding_len=50) ALREADY COMPUTED!
 mgr.tokenize(size=3000)
 mgr.generate_embeddings(glove_embedding_len=glove_embedding_len)
 mgr.generate_emebedded_documents()
