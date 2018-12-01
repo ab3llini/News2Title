@@ -3,24 +3,27 @@ import pandas as pd
 import nltk
 import pickle
 
-from sklearn.feature_extraction.text import TfidfVectorizer
 from tqdm import tqdm
 import sys
 from keras.preprocessing.sequence import pad_sequences
 import ntpath
+
 
 this_path = os.path.dirname(os.path.realpath(__file__))
 root_path = os.path.abspath(os.path.join(this_path, os.pardir))
 
 sys.path.append(root_path)
 
+from sklearn.feature_extraction.text import TfidfVectorizer
 from model.batch_iterator import BatchIterator
 from model.batch_generator import BatchGenerator
 from embedding.load_glove_embeddings import load_glove_embeddings
 from utility.text import *
+from utility.tfidf import *
 from utility.model import *
 from utility.monitor import *
 
+tqdm.pandas()
 
 this_path = os.path.dirname(os.path.realpath(__file__))
 root_path = os.path.abspath(os.path.join(this_path, os.pardir))
@@ -59,7 +62,138 @@ class DatasetManager:
             os.path.join(dataset_path, file) for file in files
         ]
 
-    def tokenize(self, only_tfidf, tfidf_file=None, size=10000):
+    def tokenize_tfidf_locally(self, n_features=100, size=500):
+        """
+        Will tokenize articles by keeping only the most important n_features words.
+        Given an article, we will look for the n_features most important words and will create a document which
+        will be a list of most important words
+        IMPORTANT : Headlines will be tokenized as usual, without TFIDF
+        :param n_features: number of features to keep in each article. This should be grater then max article len because
+                            we might not have some embeddings for the returned words and could end up in adding a lot of
+                            padding
+        :param size: the size of each tokenized file
+        :return:
+        """
+        if self.verbose:
+            print('Local TF-IDF Tokenization started. Size set to', size, ', number of features se to', n_features)
+
+        for idx, path in enumerate(self.dataset):
+
+            if self.verbose:
+                print('-' * len(path) + '\nWorking on', path)
+
+            # Load frame and drop everything but what we need
+            frame = pd.read_csv(path, encoding='utf8').filter(['title', 'content'])
+
+            o_len = frame.shape[0]
+
+            # Fill nan values with nothing but replace NaN which is a float and make the script crash
+            frame = frame.fillna('')
+
+            if self.verbose:
+                print('Removing recurrent headlines..')
+
+            # Preprocessing: remove recurrent headlines (e.g: "- the new york times")
+            frame['title'] = frame['title'].str.replace(' - The New York Times', '')
+
+            if self.verbose:
+                print('Removing non-ASCII chars..')
+
+            # Remove all non ASCII chars
+            frame['title'] = frame['title'].replace({r'[^\x00-\x7F]+': ''}, regex=True)
+            frame['content'] = frame['content'].replace({r'[^\x00-\x7F]+': ''}, regex=True)
+
+            if self.verbose:
+                print('Filtering out small news..')
+
+            # Remove short articles or headlines
+            frame = frame[frame['title'].str.split().progress_apply(len) >= self.min_headline_len]
+            frame = frame[frame['content'].str.split().progress_apply(len) >= self.min_article_len]
+
+            n_len = frame.shape[0]
+
+            if self.verbose:
+                print(str(o_len - n_len), 'news were removed before processing chunks'
+                                          ' because were too short (either headline or article)')
+
+            print(frame['content'].iloc[0])
+
+            # Convert article ONLY to its most important
+            frame['content'] = frame['content'].progress_apply(lambda text: get_tfidf_features_in_doc(doc=text, n_features=n_features))
+
+            print('Articles converted to TF-IDF most important words')
+
+            print(frame['content'].iloc[0])
+
+            # Truncate headlines and articles
+            frame['title'] = frame['title'].progress_apply(
+                lambda x: ' '.join(x.split()[:self.max_headline_len])
+            )
+            # We do not want to truncate articles to max article len now. Gen embeddings will take care of it later
+            # frame['content'] = frame['content'].progress_apply(
+            #    lambda x: ' '.join(x.split()[:self.max_article_len])
+            # )
+
+            if self.verbose:
+                print('Headlines ONLY were truncated to desired size')
+
+            n_chunks = round(frame.shape[0] / size)
+
+            if self.verbose:
+                print('Frame will be divided in', str(n_chunks), 'chunks')
+
+            for chunk in range(n_chunks):
+
+                if self.verbose:
+                    print('Working on chunk', chunk + 1)
+
+                sub_frame = frame.iloc[chunk * size: chunk * size + size].copy()
+
+                if self.verbose:
+                    print('Number of elements:', sub_frame.shape[0])
+
+                # lower all strings
+                sub_frame['title'] = sub_frame['title'].str.lower()
+
+                # Tokenize
+                sub_frame['title'] = sub_frame['title'].progress_apply(lambda row: nltk.word_tokenize(row))
+
+                tkn_head = sub_frame['title'].tolist()
+                tkn_desc = sub_frame['content'].tolist()
+
+                # Truncate the articles to the first dot
+                tkn_head = truncate_sentences(tkn_head, self.max_headline_len, stop_words=['.', '!', '?'])
+
+                thrown = 0
+
+                for h, d in zip(tkn_head[:], tkn_desc[:]):
+                    if len(h) < self.min_headline_len:
+                        tkn_head.remove(h)
+                        tkn_desc.remove(d)
+                        thrown += 1
+
+                if self.verbose:
+                    print('=> After tokenization and paragraph truncate', thrown, 'more news have been thrown')
+                    print('Headline length (words): avg = %s, min = %s, max = %s' % get_text_stats(tkn_head))
+                    print('Article length (words): avg = %s, min = %s, max = %s' % get_text_stats(tkn_desc))
+
+                out = []
+                for t, d in zip(tkn_head, tkn_desc):
+                    out.append([t, d])
+
+                f_name = tokenized_prefix + str(idx) + '_C' + str(chunk + 1) + '.pkl'
+                save_path = os.path.join(root_path, 'tokenized/', f_name)
+                # Save to pickle
+                with open(save_path, 'wb') as handle:
+                    pickle.dump(out, handle)
+
+                n_len -= thrown
+
+            print('All chunks have been processed')
+            print('We dropped a total of ' + str(o_len - n_len) + ' news - %.2f%%' % ((1 - n_len/o_len) * 100))
+            print('-' * len(path))
+
+    def tokenize(self, only_tfidf, tfidf_file=None, size=500):
 
         if only_tfidf and tfidf_file is None:
             raise Exception("You must specify a tfidf file when only_tfidf=True")
@@ -97,8 +231,8 @@ class DatasetManager:
                 print('Filtering out small news..')
 
             # Remove short articles or headlines
-            frame = frame[frame['title'].str.split().apply(len) >= self.min_headline_len]
-            frame = frame[frame['content'].str.split().apply(len) >= self.min_article_len]
+            frame = frame[frame['title'].str.split().progress_apply(len) >= self.min_headline_len]
+            frame = frame[frame['content'].str.split().progress_apply(len) >= self.min_article_len]
 
             if only_tfidf:
                 if self.verbose:
@@ -107,8 +241,8 @@ class DatasetManager:
 
                 features = self.load_tfidf_features(tfidf_file)
 
-                frame['title'] = frame['title'].apply(lambda x: ' '.join([w if w in features else '' for w in x.split()]))
-                frame['content'] = frame['content'].apply(lambda x: ' '.join([w if w in features else '' for w in x.split()]))
+                frame['title'] = frame['title'].progress_apply(lambda x: ' '.join([w if w in features else '' for w in x.split()]))
+                frame['content'] = frame['content'].progress_apply(lambda x: ' '.join([w if w in features else '' for w in x.split()]))
 
             n_len = frame.shape[0]
 
@@ -117,10 +251,10 @@ class DatasetManager:
                                           ' because were too short (either headline or article)')
 
             # Truncate headlines and articles
-            frame['title'] = frame['title'].apply(
+            frame['title'] = frame['title'].progress_apply(
                 lambda x: ' '.join(x.split()[:self.max_headline_len])
             )
-            frame['content'] = frame['content'].apply(
+            frame['content'] = frame['content'].progress_apply(
                 lambda x: ' '.join(x.split()[:self.max_article_len])
             )
 
@@ -147,8 +281,8 @@ class DatasetManager:
                 sub_frame['content'] = sub_frame['content'].str.lower()
 
                 # Tokenize
-                sub_frame['title'] = sub_frame['title'].apply(lambda row: nltk.word_tokenize(row))
-                sub_frame['content'] = sub_frame['content'].apply(lambda row: nltk.word_tokenize(row))
+                sub_frame['title'] = sub_frame['title'].progress_apply(lambda row: nltk.word_tokenize(row))
+                sub_frame['content'] = sub_frame['content'].progress_apply(lambda row: nltk.word_tokenize(row))
 
                 tkn_head = sub_frame['title'].tolist()
                 tkn_desc = sub_frame['content'].tolist()
@@ -197,13 +331,17 @@ class DatasetManager:
 
         return features
 
-    def compute_tfidf(self,
-                      max_features,
-                      glove_embedding_len,
-                      save_to_file=True,
-                      f_name='TF-IDF',
-                      embedding_dir='embedding/'
-                      ):
+    """
+    ******** DEPRECATED: This method was looking for tfidf on all documents
+    ******** CALL INSTEAD: tokenize_tfidf_locally()
+    
+    def generate_tfidf_globally(self,
+                                           max_features,
+                                           glove_embedding_len,
+                                           save_to_file=True,
+                                           f_name='TF-IDF',
+                                           embedding_dir='embedding/'
+                                           ):
 
         if self.verbose:
             print('TF-IDF Computation started.')
@@ -258,14 +396,16 @@ class DatasetManager:
         if self.verbose:
             print('Allocated word2index')
             print(available_ram())
+            
+
 
         def tf_idf_tokenizer(text):
-            """
+            '''
             Custom tokenizer that returns tokens only if in the embedding 
             THIS IS REQUIRED! OTHERWISE TF-IDF MIGHT (AND WILL) RETURN NON EMBEDDABLE WORDS!
             :param text: the text to tokenize, automatically called by sklearn
             :return: The tokenized text
-            """  # ref : https://www.bogotobogo.com/python/NLTK/tf_idf_with_scikit-learn_NLTK.php
+            '''  # ref : https://www.bogotobogo.com/python/NLTK/tf_idf_with_scikit-learn_NLTK.php
             stems = []
             tokens = nltk.word_tokenize(text)
             for token in tokens:
@@ -307,6 +447,7 @@ class DatasetManager:
             print(available_ram())
 
         return vectorizer.get_feature_names()
+    """
 
     @staticmethod
     def load_embeddings(f_name='embeddings.pkl'):
@@ -465,7 +606,8 @@ class DatasetManager:
             # We want to add first start and stop tokens, and then perform padding!!!
             # This is a key part, we the order differs, we will not have what we want
             add_start_stop_tokens(headlines, start_token, stop_token, self.max_headline_len)
-            add_start_stop_tokens(articles, start_token, stop_token, self.max_headline_len)
+            add_start_stop_tokens(articles, start_token, stop_token, self.max_article_len)
+
 
             if self.verbose:
                 print('Padding sequences..')
