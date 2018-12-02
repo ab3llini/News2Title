@@ -7,7 +7,6 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 from utility.model import get_inputs_outputs
-from model.dataset_manager import DatasetManager
 
 this_path = os.path.dirname(os.path.realpath(__file__))
 root_path = os.path.abspath(os.path.join(this_path, os.pardir))

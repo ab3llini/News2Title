@@ -480,6 +480,58 @@ class DatasetManager:
                       'try rebuilding test set with less elements')
                 raise me
 
+    def generate_embeddings_from_tfidf(
+            self,
+            glove_embedding_len,
+            embedding_dir='embedding/',
+    ):
+        print('-' * 100)
+        print('Computing embedding matrix. This process might require some time')
+        print('For each tokenized file, we will update our matrix')
+
+        print('Loading in memory glove embeddings..')
+
+        # We need to load now our embeddings in order to proceed with further processing
+        word2index, embeddings = load_glove_embeddings(
+            fp=os.path.join(
+                root_path,
+                embedding_dir,
+                'glove.6B.' + str(glove_embedding_len) + 'd.txt'
+            ),
+            embedding_dim=glove_embedding_len
+        )
+
+        tfidf = self.load_tfidf_features('TF_IDF_10000.pkl')
+
+        # Find all the words in the truncated sentences for which we have an embedding
+        embeddable = get_embeddable(tfidf, word2index)
+
+        if self.verbose:
+            print('Vocabulary fully computed, in total there are', len(embeddable), 'different words')
+            print('Now we are ready to generate padded and embedded files')
+
+        word2index, embeddings, start_token, stop_token, padding_token = get_reduced_embedding_matrix(embeddable,
+            embeddings,
+            word2index,
+            glove_embedding_len
+        )
+
+        if self.verbose:
+            print('Saving embeddings')
+
+        f_word2index = 'word2index.pkl'
+        f_embeddings = 'embeddings.pkl'
+
+        objects = {
+            os.path.join(root_path, 'embedding/', f_word2index): word2index,
+            os.path.join(root_path, 'embedding/', f_embeddings): embeddings
+        }
+
+        for path, data in objects.items():
+            # Save to pickle
+            with open(path, 'wb') as handle:
+                pickle.dump(data, handle)
+
     def generate_embeddings(
             self,
             glove_embedding_len,
@@ -556,8 +608,7 @@ class DatasetManager:
             vocabulary,
             embeddings,
             word2index,
-            glove_embedding_len,
-            truncate_embedding_matrix_to = 2000,
+            glove_embedding_len
         )
 
         if self.verbose:
@@ -582,6 +633,12 @@ class DatasetManager:
         start_token = word2index['start_token']
         stop_token = word2index['stop_token']
         padding_token = word2index['padding_token']
+        unknown_token = word2index['unknown_token']
+
+        print('START=', start_token)
+        print('STOP=', stop_token)
+        print('PAD=', padding_token)
+        print('UNK=', unknown_token)
 
         tokenized = [os.path.join(root_path, tokenized_dir, f) for f in
             os.listdir(os.path.join(root_path, tokenized_dir))]
@@ -607,7 +664,6 @@ class DatasetManager:
             # This is a key part, we the order differs, we will not have what we want
             add_start_stop_tokens(headlines, start_token, stop_token, self.max_headline_len)
             add_start_stop_tokens(articles, start_token, stop_token, self.max_article_len)
-
 
             if self.verbose:
                 print('Padding sequences..')

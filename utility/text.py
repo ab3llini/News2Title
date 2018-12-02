@@ -2,6 +2,9 @@ from collections import Counter
 import numpy as np
 import random
 
+from model.dataset_manager import DatasetManager
+
+
 def get_vocabulary(list_):
 
     """
@@ -57,6 +60,8 @@ def map_sentence_to_glove_index(list_, word2index):
     for word in list_:
         if word in word2index:
             mapped.append(word2index[word])
+        else:
+            mapped.append(word2index['unknown_token'])
 
     return mapped
 
@@ -106,12 +111,12 @@ def rotate(l, n):
     return l[n:] + l[:n]
 
 
-def get_reduced_embedding_matrix(vocab, glove_embeddings, word2index, glove_size,truncate_embedding_matrix_to=None):
+def get_reduced_embedding_matrix(vocab, glove_embeddings, glove_size, limit=None):
 
     new_word2index = {}
+
     voc_len = len(vocab)
-    if truncate_embedding_matrix_to:
-        voc_len = truncate_embedding_matrix_to
+
     new_embedding = np.zeros((voc_len + 4, glove_size))  # +3 to account for start, stop and padding tokens
 
     # Add start and stop
@@ -130,19 +135,6 @@ def get_reduced_embedding_matrix(vocab, glove_embeddings, word2index, glove_size
     vocab.append('stop_token')
     vocab.append('padding_token')
     vocab.append('unknown_token')
-
-    for index, word in enumerate(vocab):
-        if truncate_embedding_matrix_to:
-            # if this option is enabled then only the first n words are mapped to the relative embedding, all the
-            # other words are mapped into the unknown token.
-            if index > truncate_embedding_matrix_to-1:
-                new_word2index[word] = voc_len + 3
-            else:
-                new_word2index[word] = index
-                new_embedding[index] = glove_embeddings[word2index[word]]
-        else:
-            new_word2index[word] = index
-            new_embedding[index] = glove_embeddings[word2index[word]]
 
     return new_word2index, new_embedding, voc_len, voc_len + 1, voc_len + 2
 

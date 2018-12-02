@@ -104,16 +104,11 @@ mgr = DatasetManager(
 # Run these only if you don't have training and testing sets
 # THIS IS WORKING FINE:
 # IF ANY ERROR WITH TFIDF POPS UP, ROLLBACK HERE
-# mgr.tokenize(size=500)
-# mgr.generate_embeddings(glove_embedding_len=glove_embedding_len)
-# mgr.generate_emebedded_documents()
-# mgr.generate_test_set(from_file=os.path.join(root_path, tokenized_path, 'EMB_A0_C1.pkl'), size=500)
-
-# TFIDF
-mgr.tokenize_tfidf_locally(n_features=100, size=500)
-mgr.generate_embeddings(glove_embedding_len=glove_embedding_len)
+mgr.tokenize(size=1000, only_tfidf=False)
+mgr.generate_embeddings_from_tfidf(glove_embedding_len=glove_embedding_len)
 mgr.generate_emebedded_documents()
 mgr.generate_test_set(from_file=os.path.join(root_path, tokenized_path, 'EMB_A0_C1.pkl'), size=500)
+
 
 raise Exception('Stop here before training')
 
