@@ -1,15 +1,59 @@
-from keras.engine.saving import load_model
 from keras.models import Model
-from keras.layers import Input, LSTM, Dense, Embedding, TimeDistributed
-from model.data_processing import latent_dim, num_encoder_tokens, glove_embedding_len, max_encoder_seq_len, \
-    embeddings, num_decoder_tokens, max_decoder_seq_len, word2index, encoder_input_data_ts
+from keras.layers import Input, Dense, Embedding, TimeDistributed, LSTM
 from keras.models import load_model
 import numpy as np
+import os
+import sys
+
+from sklearn.model_selection import train_test_split
+from model.dataset_manager import DatasetManager, get_inputs_outputs
+
+this_path = os.path.dirname(os.path.realpath(__file__))
+root_path = os.path.abspath(os.path.join(this_path, os.pardir))
+tokenized_path = os.path.join(root_path, 'tokenized/')
+embedding_path = os.path.join(root_path, 'embedding/')
+sys.path.append(root_path)
+
+max_headline_len = 20
+max_article_len = 30
+min_headline_len = 5
+min_article_len = 10
+glove_embedding_len = 50
+embeddings = DatasetManager.load_embeddings()
+word2index = DatasetManager.load_word2index()
+
+num_encoder_tokens=num_decoder_tokens=embeddings.shape[0]
+max_encoder_seq_len = max_article_len
+max_decoder_seq_len = max_headline_len
+latent_dim = 64  # Latent dimensionality of the encoding space.
+
+from model.generator import DataGenerator
+data_generator = DataGenerator(max_decoder_seq_len=max_headline_len, decoder_tokens=embeddings.shape[0],test_size=0.20)
 
 # Restore the model and reconstruct the encoder and decoder.
 trained_model = load_model('n2t_full1543297558.h5')
 # We reconstruct the model in order to make inference
 # Encoder reconstruction
+"""
+NEW INFERENCE MODE 
+
+
+###TODO: real inference part 
+encoder_model = Model(encoder_inputs, encoder_states)
+
+decoder_state_input_h = Input(shape=(latent_dim,))
+decoder_state_input_c = Input(shape=(latent_dim,))
+decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
+decoder_outputs, state_h, state_c = decoder_lstm(
+    decoder_inputs, initial_state=decoder_states_inputs)
+decoder_states = [state_h, state_c]
+decoder_outputs = decoder_dense(decoder_outputs)
+decoder_model = Model(
+    [decoder_inputs] + decoder_states_inputs,
+    [decoder_outputs] + decoder_states)
+
+
+"""
 
 encoder_inputs = trained_model.input[0]
 #Input(shape=(max_encoder_seq_len,), name='ENCODER_INPUT')
@@ -58,12 +102,60 @@ decoder_outputs = decoder_time_distributed(decoder_outputs)
 decoder_model = Model(
     [decoder_inputs] + decoder_states_inputs,
     [decoder_outputs] + decoder_states)
+encoder_model.summary()
+decoder_model.summary()
 
-# starting from word2index We build the index2word dictionary that maps the index in the word.
-index2word = dict((y,x) for x,y in word2index.items())
+index2word = {}
+
+for k, v in word2index.items():
+    if v == word2index['unknown_token']:
+        if v not in index2word:
+            index2word[v] = 'unknown_token'
+    else:
+        index2word[v] = k
+
 
 def decode_sequence(input_seq):
     # Encode the input as state vectors.
+    states_value= encoder_model.predict(input_seq)
+
+    # Generate empty target sequence of length 1.
+    decoder_input = np.zeros((1, 20))
+    # Populate the first character of target sequence with the start character.
+    decoder_input[0, 0] = word2index['start_token']
+
+    # Sampling loop for a batch of sequences
+    # (to simplify, here we assume a batch of size 1).
+    stop_condition = False
+    decoded_sentence = []
+
+    while not stop_condition:
+        output_tokens, h, c = decoder_model.predict(
+            [decoder_input] + states_value)
+
+        # Sample a token
+        sampled_token_index = np.argmax(output_tokens[0, len(decoded_sentence), :])
+        sampled_char = index2word[sampled_token_index]
+        decoded_sentence.append(sampled_char)
+
+        # Exit condition: either hit max length
+        # or find stop character.
+        if (sampled_char == 'stop_token' or
+           len(decoded_sentence) > max_headline_len - 1):
+            stop_condition = True
+
+        else:
+            decoder_input[0, len(decoded_sentence)] = sampled_token_index
+
+        # Update states
+        states_value = [h, c]
+    return decoded_sentence
+
+"""
+OLD DECODE SEQUENCE
+def decode_sequence(input_seq):
+    # Encode the input as state vectors.
+    print(input_seq)
     states_value = encoder_model.predict(input_seq)
 
     # Generate empty target sequence of length 1.
@@ -73,7 +165,7 @@ def decode_sequence(input_seq):
     # Populate the first character of target sequence with the start character.
     #TODO: spara ad 1 il valore dell'embedding token per start.
     #target_seq[0, 0, word2index['START_tkn']] = 1.
-    target_seq[0, 0] = word2index['START_tkn']
+    target_seq[0, 0] = word2index['start_token']
 
     # Sampling loop for a batch of sequences
     # (to simplify, here we assume a batch of size 1).
@@ -88,7 +180,7 @@ def decode_sequence(input_seq):
         # sampled_token_index = np.argmax(output_tokens[0, -1, :])
         sampled_token_index = np.argmax(output_tokens[0,-1, :])
         sampled_char = index2word[sampled_token_index]
-        decoded_sentence += sampled_char
+        decoded_sentence += ' '+sampled_char
 
         # Exit condition: either hit max length
         # or find stop character.
@@ -102,87 +194,40 @@ def decode_sequence(input_seq):
         target_seq[0,0] = sampled_token_index
         # Update states
         states_value = [h, c]
-
     return decoded_sentence
+"""
+import pickle
 
-for i in range(encoder_input_data_ts.shape[0]):
-    seq = encoder_input_data_ts[i,:]
-    seq = seq.reshape((1,40))
-    print(decode_sequence(seq))
+this_path = os.path.dirname(os.path.realpath(__file__))
+root_path = os.path.abspath(os.path.join(this_path, os.pardir))
+embedding_prefix = 'EMB_'
+tokenized_prefix = 'A'
+tokenized_path = os.path.join(root_path, 'tokenized/')
+filelist = []
 
-'''
-encoder_inputs = model.input[0]   # input_1
-encoder_outputs, state_h_enc, state_c_enc = model.layers[2].output   # lstm_1
-encoder_states = [state_h_enc, state_c_enc]
-encoder_model = Model(encoder_inputs, encoder_states)
-
-decoder_inputs = model.input[1]   # input_2
-decoder_state_input_h = Input(shape=(latent_dim,), name='input_3')
-decoder_state_input_c = Input(shape=(latent_dim,), name='input_4')
-decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
-decoder_lstm = model.layers[3]
-decoder_outputs, state_h_dec, state_c_dec = decoder_lstm(
-    decoder_inputs, initial_state=decoder_states_inputs)
-decoder_states = [state_h_dec, state_c_dec]
-decoder_dense = model.layers[4]
-decoder_outputs = decoder_dense(decoder_outputs)
-decoder_model = Model(
-    [decoder_inputs] + decoder_states_inputs,
-    [decoder_outputs] + decoder_states)
-
-# Reverse-lookup token index to decode sequences back to
-# something readable.
-reverse_input_char_index = dict(
-    (i, char) for char, i in input_token_index.items())
-reverse_target_char_index = dict(
-    (i, char) for char, i in target_token_index.items())
+import ntpath
+for f in os.listdir(tokenized_path):
+    if ntpath.basename(f).startswith(embedding_prefix + tokenized_prefix):
+        filelist.append(os.path.join(tokenized_path, f))
+train_list,test_list = train_test_split(filelist, test_size=0.33, random_state=42)
 
 
-# Decodes an input sequence.  Future work should support beam search.
-def decode_sequence(input_seq):
-    # Encode the input as state vectors.
-    states_value = encoder_model.predict(input_seq)
+def load_tokens(file):
+    with open(file, 'rb') as handle:
+        data = np.array(pickle.load(handle))
+        headlines = list(data[:, 0])
+        articles = list(data[:, 1])
+        return headlines, articles, data.shape[0]
 
-    # Generate empty target sequence of length 1.
-    target_seq = np.zeros((1, 1, num_decoder_tokens))
-    # Populate the first character of target sequence with the start character.
-    target_seq[0, 0, target_token_index['\t']] = 1.
+headline, articles, file_length = load_tokens(test_list[0])
+encoder_input_data, decoder_input_data, decoder_target_data = get_inputs_outputs(
+    x=articles,
+    y=headline,
+    max_decoder_seq_len=max_decoder_seq_len,
+    num_decoder_tokens=embeddings.shape[0]
+)
 
-    # Sampling loop for a batch of sequences
-    # (to simplify, here we assume a batch of size 1).
-    stop_condition = False
-    decoded_sentence = ''
-    while not stop_condition:
-        output_tokens, h, c = decoder_model.predict(
-            [target_seq] + states_value)
+for element in encoder_input_data:
+    print(element)
+    # print(decode_sequence(np.array(element).reshape((1,30))))
 
-        # Sample a token
-        sampled_token_index = np.argmax(output_tokens[0, -1, :])
-        sampled_char = reverse_target_char_index[sampled_token_index]
-        decoded_sentence += sampled_char
-
-        # Exit condition: either hit max length
-        # or find stop character.
-        if (sampled_char == '\n' or
-           len(decoded_sentence) > max_decoder_seq_length):
-            stop_condition = True
-
-        # Update the target sequence (of length 1).
-        target_seq = np.zeros((1, 1, num_decoder_tokens))
-        target_seq[0, 0, sampled_token_index] = 1.
-
-        # Update states
-        states_value = [h, c]
-
-    return decoded_sentence
-
-
-for seq_index in range(100):
-    # Take one sequence (part of the training set)
-    # for trying out decoding.
-    input_seq = encoder_input_data[seq_index: seq_index + 1]
-    decoded_sentence = decode_sequence(input_seq)
-    print('-')
-    print('Input sentence:', input_texts[seq_index])
-    print('Decoded sentence:', decoded_sentence)
-'''

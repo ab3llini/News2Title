@@ -8,7 +8,6 @@ import sys
 from keras.preprocessing.sequence import pad_sequences
 import ntpath
 
-
 this_path = os.path.dirname(os.path.realpath(__file__))
 root_path = os.path.abspath(os.path.join(this_path, os.pardir))
 
@@ -35,7 +34,7 @@ tfidf_path = os.path.join(root_path, 'TFIDF/')
 embedding_prefix = 'EMB_'
 tokenized_prefix = 'A'
 
-#ciao
+# ciao
 
 files = ['articles1.csv', 'articles2.csv', 'articles3.csv']
 
@@ -46,13 +45,7 @@ class DatasetManager:
     It even computes the proper embedding matrix for all the words present in the corpus
     """
 
-    def __init__(self,
-                 min_headline_len,
-                 min_article_len,
-                 max_headline_len,
-                 max_article_len,
-                 verbose=False
-                 ):
+    def __init__(self, min_headline_len, min_article_len, max_headline_len, max_article_len, verbose=False):
 
         self.min_headline_len = min_headline_len
         self.min_article_len = min_article_len
@@ -60,9 +53,7 @@ class DatasetManager:
         self.max_headline_len = max_headline_len
         self.verbose = verbose
 
-        self.dataset = [
-            os.path.join(dataset_path, file) for file in files
-        ]
+        self.dataset = [os.path.join(dataset_path, file) for file in files]
 
     def tokenize_tfidf_locally(self, n_features=100, size=500):
         """
@@ -121,16 +112,15 @@ class DatasetManager:
             print(frame['content'].iloc[0])
 
             # Convert article ONLY to its most important
-            frame['content'] = frame['content'].progress_apply(lambda text: get_tfidf_features_in_doc(doc=text, n_features=n_features))
+            frame['content'] = frame['content'].progress_apply(
+                lambda text: get_tfidf_features_in_doc(doc=text, n_features=n_features))
 
             print('Articles converted to TF-IDF most important words')
 
             print(frame['content'].iloc[0])
 
             # Truncate headlines and articles
-            frame['title'] = frame['title'].progress_apply(
-                lambda x: ' '.join(x.split()[:self.max_headline_len])
-            )
+            frame['title'] = frame['title'].progress_apply(lambda x: ' '.join(x.split()[:self.max_headline_len]))
             # We do not want to truncate articles to max article len now. Gen embeddings will take care of it later
             # frame['content'] = frame['content'].progress_apply(
             #    lambda x: ' '.join(x.split()[:self.max_article_len])
@@ -192,7 +182,7 @@ class DatasetManager:
                 n_len -= thrown
 
             print('All chunks have been processed')
-            print('We dropped a total of ' + str(o_len - n_len) + ' news - %.2f%%' % ((1 - n_len/o_len) * 100))
+            print('We dropped a total of ' + str(o_len - n_len) + ' news - %.2f%%' % ((1 - n_len / o_len) * 100))
             print('-' * len(path))
 
     def tokenize(self, only_tfidf, tfidf_file=None, size=500):
@@ -243,8 +233,10 @@ class DatasetManager:
 
                 features = self.load_tfidf_features(tfidf_file)
 
-                frame['title'] = frame['title'].progress_apply(lambda x: ' '.join([w if w in features else '' for w in x.split()]))
-                frame['content'] = frame['content'].progress_apply(lambda x: ' '.join([w if w in features else '' for w in x.split()]))
+                frame['title'] = frame['title'].progress_apply(
+                    lambda x: ' '.join([w if w in features else '' for w in x.split()]))
+                frame['content'] = frame['content'].progress_apply(
+                    lambda x: ' '.join([w if w in features else '' for w in x.split()]))
 
             n_len = frame.shape[0]
 
@@ -253,12 +245,8 @@ class DatasetManager:
                                           ' because were too short (either headline or article)')
 
             # Truncate headlines and articles
-            frame['title'] = frame['title'].progress_apply(
-                lambda x: ' '.join(x.split()[:self.max_headline_len])
-            )
-            frame['content'] = frame['content'].progress_apply(
-                lambda x: ' '.join(x.split()[:self.max_article_len])
-            )
+            frame['title'] = frame['title'].progress_apply(lambda x: ' '.join(x.split()[:self.max_headline_len]))
+            frame['content'] = frame['content'].progress_apply(lambda x: ' '.join(x.split()[:self.max_article_len]))
 
             if self.verbose:
                 print('News were truncated to desired size')
@@ -319,7 +307,7 @@ class DatasetManager:
                 n_len -= thrown
 
             print('All chunks have been processed')
-            print('We dropped a total of ' + str(o_len - n_len) + ' news - %.2f%%' % ((1 - n_len/o_len) * 100))
+            print('We dropped a total of ' + str(o_len - n_len) + ' news - %.2f%%' % ((1 - n_len / o_len) * 100))
             print('-' * len(path))
 
     @staticmethod
@@ -470,23 +458,15 @@ class DatasetManager:
             articles = list(data[:, 1])
 
             try:
-                return get_inputs_outputs(
-                    x=articles,
-                    y=headlines,
-                    max_decoder_seq_len=self.max_headline_len,
-                    num_decoder_tokens=num_decoder_tokens
-                )
+                return get_inputs_outputs(x=articles, y=headlines, max_decoder_seq_len=self.max_headline_len,
+                                          num_decoder_tokens=num_decoder_tokens)
 
             except MemoryError as me:
                 print('[<->] Memory alloc failed while loading test set. Size might be too large, '
                       'try rebuilding test set with less elements')
                 raise me
 
-    def generate_embeddings_from_tfidf(
-            self,
-            glove_embedding_len,
-            embedding_dir='embedding/',
-    ):
+    def generate_embeddings_from_tfidf(self, glove_embedding_len, embedding_dir='embedding/', ):
         print('-' * 100)
         print('Computing embedding matrix. This process might require some time')
         print('For each tokenized file, we will update our matrix')
@@ -495,13 +475,8 @@ class DatasetManager:
 
         # We need to load now our embeddings in order to proceed with further processing
         word2index, embeddings = load_glove_embeddings(
-            fp=os.path.join(
-                root_path,
-                embedding_dir,
-                'glove.6B.' + str(glove_embedding_len) + 'd.txt'
-            ),
-            embedding_dim=glove_embedding_len
-        )
+            fp=os.path.join(root_path, embedding_dir, 'glove.6B.' + str(glove_embedding_len) + 'd.txt'),
+            embedding_dim=glove_embedding_len)
 
         tfidf = self.load_tfidf_features('TF_IDF_10000.pkl')
 
@@ -513,10 +488,9 @@ class DatasetManager:
             print('Now we are ready to generate padded and embedded files')
 
         word2index, embeddings, start_token, stop_token, padding_token = get_reduced_embedding_matrix(embeddable,
-            embeddings,
-            word2index,
-            glove_embedding_len
-        )
+                                                                                                      embeddings,
+                                                                                                      word2index,
+                                                                                                      glove_embedding_len)
 
         if self.verbose:
             print('Saving embeddings')
@@ -524,22 +498,15 @@ class DatasetManager:
         f_word2index = 'word2index.pkl'
         f_embeddings = 'embeddings.pkl'
 
-        objects = {
-            os.path.join(root_path, 'embedding/', f_word2index): word2index,
-            os.path.join(root_path, 'embedding/', f_embeddings): embeddings
-        }
+        objects = {os.path.join(root_path, 'embedding/', f_word2index): word2index,
+                   os.path.join(root_path, 'embedding/', f_embeddings): embeddings}
 
         for path, data in objects.items():
             # Save to pickle
             with open(path, 'wb') as handle:
                 pickle.dump(data, handle)
 
-    def generate_embeddings(
-            self,
-            glove_embedding_len,
-            tokenized_dir='tokenized/',
-            embedding_dir='embedding/',
-    ):
+    def generate_embeddings(self, glove_embedding_len, tokenized_dir='tokenized/', embedding_dir='embedding/', ):
         print('-' * 100)
         print('Computing embedding matrix. This process might require some time')
         print('For each tokenized file, we will update our matrix')
@@ -548,21 +515,11 @@ class DatasetManager:
 
         # We need to load now our embeddings in order to proceed with further processing
         word2index, embeddings = load_glove_embeddings(
-            fp=os.path.join(
-                root_path,
-                embedding_dir,
-                'glove.6B.' + str(glove_embedding_len) + 'd.txt'
-            ),
-            embedding_dim=glove_embedding_len
-        )
+            fp=os.path.join(root_path, embedding_dir, 'glove.6B.' + str(glove_embedding_len) + 'd.txt'),
+            embedding_dim=glove_embedding_len)
 
-        tokenized = [
-            os.path.join(
-                root_path,
-                tokenized_dir,
-                f
-            ) for f in os.listdir(os.path.join(root_path, tokenized_dir))
-        ]
+        tokenized = [os.path.join(root_path, tokenized_dir, f) for f in
+                     os.listdir(os.path.join(root_path, tokenized_dir))]
         vocabulary = []
 
         for file in (tokenized if self.verbose else tqdm(tokenized)):
@@ -606,12 +563,10 @@ class DatasetManager:
             print('Vocabulary fully computed, in total there are', len(vocabulary), 'different words')
             print('Now we are ready to generate padded and embedded files')
 
-        word2index, embeddings, start_token, stop_token, padding_token = get_reduced_embedding_matrix(
-            vocabulary,
-            embeddings,
-            word2index,
-            glove_embedding_len
-        )
+        word2index, embeddings, start_token, stop_token, padding_token = get_reduced_embedding_matrix(vocabulary,
+                                                                                                      embeddings,
+                                                                                                      word2index,
+                                                                                                      glove_embedding_len)
 
         if self.verbose:
             print('Saving embeddings')
@@ -619,10 +574,8 @@ class DatasetManager:
         f_word2index = 'word2index.pkl'
         f_embeddings = 'embeddings.pkl'
 
-        objects = {
-            os.path.join(root_path, 'embedding/', f_word2index): word2index,
-            os.path.join(root_path, 'embedding/', f_embeddings): embeddings
-        }
+        objects = {os.path.join(root_path, 'embedding/', f_word2index): word2index,
+                   os.path.join(root_path, 'embedding/', f_embeddings): embeddings}
 
         for path, data in objects.items():
             # Save to pickle
@@ -643,7 +596,7 @@ class DatasetManager:
         print('UNK=', unknown_token)
 
         tokenized = [os.path.join(root_path, tokenized_dir, f) for f in
-            os.listdir(os.path.join(root_path, tokenized_dir))]
+                     os.listdir(os.path.join(root_path, tokenized_dir))]
 
         # Generating padded and embedded files
         for file in (tokenized if self.verbose else tqdm(tokenized)):
@@ -755,18 +708,11 @@ class DatasetManager:
             verbose=self.verbose
         )
         """
-        training_gen = BatchGenerator(
-            max_headline_len=self.max_headline_len,
-            num_decoder_tokens=num_decoder_tokens,
-            tokenized_paths=training_set_paths,
-            output_size=block_size,
-            verbose=self.verbose
-        )
+        training_gen = BatchGenerator(max_headline_len=self.max_headline_len, num_decoder_tokens=num_decoder_tokens,
+                                      tokenized_paths=training_set_paths, output_size=block_size, verbose=self.verbose)
 
         print('Batch iterator successfully created')
 
         # ei = encoder input.. and so on
         ei_ts, di_ts, dt_ts = self.load_test(num_decoder_tokens, testing_set_path)
-        return training_gen,ei_ts, di_ts, dt_ts
-        #return training_it, ei_ts, di_ts, dt_ts
-
+        return training_gen, ei_ts, di_ts, dt_ts  # return training_it, ei_ts, di_ts, dt_ts

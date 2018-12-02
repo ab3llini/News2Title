@@ -1,8 +1,11 @@
 from collections import Counter
 import numpy as np
 import random
+import sys, os
+this_path = os.path.dirname(os.path.realpath(__file__))
+root_path = os.path.abspath(os.path.join(this_path, os.pardir))
 
-from model.dataset_manager import DatasetManager
+sys.path.append(root_path)
 
 
 def get_vocabulary(list_):
@@ -111,7 +114,7 @@ def rotate(l, n):
     return l[n:] + l[:n]
 
 
-def get_reduced_embedding_matrix(vocab, glove_embeddings, glove_size, limit=None):
+def get_reduced_embedding_matrix(vocab, glove_embeddings, word2index, glove_size):
 
     new_word2index = {}
     # ciao
@@ -119,6 +122,10 @@ def get_reduced_embedding_matrix(vocab, glove_embeddings, glove_size, limit=None
     voc_len = len(vocab)
 
     new_embedding = np.zeros((voc_len + 4, glove_size))  # +3 to account for start, stop and padding tokens
+
+    for index, word in enumerate(vocab):
+        new_word2index[word] = index
+        new_embedding[index] = glove_embeddings[word2index[word]]
 
     # Add start and stop
     new_word2index['start_token'] = voc_len
@@ -136,6 +143,8 @@ def get_reduced_embedding_matrix(vocab, glove_embeddings, glove_size, limit=None
     vocab.append('stop_token')
     vocab.append('padding_token')
     vocab.append('unknown_token')
+
+
 
     return new_word2index, new_embedding, voc_len, voc_len + 1, voc_len + 2
 

@@ -2,10 +2,6 @@ import sys
 import os
 import time
 
-#TODO: remove this part, it is only used for trial without GPU
-
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 
 this_path = os.path.dirname(os.path.realpath(__file__))
@@ -105,13 +101,13 @@ mgr = DatasetManager(
 # Run these only if you don't have training and testing sets
 # THIS IS WORKING FINE:
 # IF ANY ERROR WITH TFIDF POPS UP, ROLLBACK HERE
-mgr.tokenize(size=1000, only_tfidf=False)
+
+mgr.tokenize(size=500, only_tfidf=False)
 mgr.generate_embeddings_from_tfidf(glove_embedding_len=glove_embedding_len)
 mgr.generate_emebedded_documents()
-mgr.generate_test_set(from_file=os.path.join(root_path, tokenized_path, 'EMB_A0_C1.pkl'), size=500)
 
 
-raise Exception('Stop here before training')
+# raise Exception('Stop here before training')
 
 print('Before loading embeddings:', available_ram())
 embeddings = DatasetManager.load_embeddings()
