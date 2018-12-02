@@ -35,6 +35,8 @@ tfidf_path = os.path.join(root_path, 'TFIDF/')
 embedding_prefix = 'EMB_'
 tokenized_prefix = 'A'
 
+#ciao
+
 files = ['articles1.csv', 'articles2.csv', 'articles3.csv']
 
 

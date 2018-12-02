@@ -10,6 +10,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 this_path = os.path.dirname(os.path.realpath(__file__))
 root_path = os.path.abspath(os.path.join(this_path, os.pardir))
+#ciao
 tokenized_path = os.path.join(root_path, 'tokenized/')
 embedding_path = os.path.join(root_path, 'embedding/')
 

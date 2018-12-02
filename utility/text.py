@@ -114,6 +114,7 @@ def rotate(l, n):
 def get_reduced_embedding_matrix(vocab, glove_embeddings, glove_size, limit=None):
 
     new_word2index = {}
+    # ciao
 
     voc_len = len(vocab)
 
