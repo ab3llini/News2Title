@@ -51,7 +51,7 @@ min_article_len = 10
 test_ratio = 0.1
 #chunk_size = 1000  # Size of each chunk
 #batch_size = 1000  # Batch size for training on each chunk
-tot_epochs = 500  # Number of epochs to train for.
+tot_epochs = 60  # Number of epochs to train for.
 epochs_per_chunk = 1  # Number of epochs to train each chunk on
 latent_dim = 128  # Latent dimensionality of the encoding space.
 
@@ -65,7 +65,7 @@ optimizer = 'rmsprop'
 loss = 'categorical_crossentropy'
 
 # Model save name
-model_name = 'n2t_full_tfidf'
+model_name = 'n2t_full_tfidf_70000'
 
 # Overfitting config
 early_stopping = EarlyStopping(monitor='val_loss', patience=5, min_delta=0)
@@ -101,11 +101,11 @@ mgr = DatasetManager(
 # Run these only if you don't have training and testing sets
 # THIS IS WORKING FINE:
 # IF ANY ERROR WITH TFIDF POPS UP, ROLLBACK HERE
-"""
-mgr.tokenize(size=500, only_tfidf=False)
-mgr.generate_embeddings_from_tfidf(glove_embedding_len=glove_embedding_len)
+
+mgr.tokenize(size=250, only_tfidf=False)
+mgr.generate_embeddings_from_tfidf(glove_embedding_len=glove_embedding_len, fname='TF-IDF_70000.pkl')
 mgr.generate_emebedded_documents()
-"""
+
 
 # raise Exception('Stop here before training')
 
@@ -153,7 +153,6 @@ print('*' * 100)
 
 data_generator = DataGenerator(max_decoder_seq_len=max_headline_len, decoder_tokens=embeddings.shape[0],test_size=0.20)
 
-#TODO: steps_per_epoch is missing the correct termination for each epoch.
 model.fit_generator(
               generator=data_generator.generate_train(),
               validation_data=data_generator.generate_test(),

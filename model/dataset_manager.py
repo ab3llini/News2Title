@@ -466,7 +466,7 @@ class DatasetManager:
                       'try rebuilding test set with less elements')
                 raise me
 
-    def generate_embeddings_from_tfidf(self, glove_embedding_len, embedding_dir='embedding/', ):
+    def generate_embeddings_from_tfidf(self, glove_embedding_len, embedding_dir='embedding/', fname='TF-IDF_70000.pkl'):
         print('-' * 100)
         print('Computing embedding matrix. This process might require some time')
         print('For each tokenized file, we will update our matrix')
@@ -478,7 +478,7 @@ class DatasetManager:
             fp=os.path.join(root_path, embedding_dir, 'glove.6B.' + str(glove_embedding_len) + 'd.txt'),
             embedding_dim=glove_embedding_len)
 
-        tfidf = self.load_tfidf_features('TF_IDF_10000.pkl')
+        tfidf = self.load_tfidf_features(fname)
 
         # Find all the words in the truncated sentences for which we have an embedding
         embeddable = get_embeddable(tfidf, word2index)

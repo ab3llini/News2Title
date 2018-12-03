@@ -31,29 +31,10 @@ from model.generator import DataGenerator
 data_generator = DataGenerator(max_decoder_seq_len=max_headline_len, decoder_tokens=embeddings.shape[0],test_size=0.20)
 
 # Restore the model and reconstruct the encoder and decoder.
-trained_model = load_model('n2t_full1543297558.h5')
+trained_model = load_model('n2t_full_tfidf1543736589.h5')
 # We reconstruct the model in order to make inference
 # Encoder reconstruction
-"""
-NEW INFERENCE MODE 
 
-
-###TODO: real inference part 
-encoder_model = Model(encoder_inputs, encoder_states)
-
-decoder_state_input_h = Input(shape=(latent_dim,))
-decoder_state_input_c = Input(shape=(latent_dim,))
-decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
-decoder_outputs, state_h, state_c = decoder_lstm(
-    decoder_inputs, initial_state=decoder_states_inputs)
-decoder_states = [state_h, state_c]
-decoder_outputs = decoder_dense(decoder_outputs)
-decoder_model = Model(
-    [decoder_inputs] + decoder_states_inputs,
-    [decoder_outputs] + decoder_states)
-
-
-"""
 
 encoder_inputs = trained_model.input[0]
 #Input(shape=(max_encoder_seq_len,), name='ENCODER_INPUT')
@@ -120,7 +101,7 @@ def decode_sequence(input_seq):
     states_value= encoder_model.predict(input_seq)
 
     # Generate empty target sequence of length 1.
-    decoder_input = np.zeros((1, 20))
+    decoder_input = np.zeros((1, max_headline_len))
     # Populate the first character of target sequence with the start character.
     decoder_input[0, 0] = word2index['start_token']
 
