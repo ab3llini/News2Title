@@ -53,7 +53,7 @@ test_ratio = 0.1
 #batch_size = 1000  # Batch size for training on each chunk
 tot_epochs = 500  # Number of epochs to train for.
 epochs_per_chunk = 1  # Number of epochs to train each chunk on
-latent_dim = 64  # Latent dimensionality of the encoding space.
+latent_dim = 128  # Latent dimensionality of the encoding space.
 
 tensorboard_log_dir = os.path.join(root_path, 'tensorboard/News2Title')
 
@@ -101,11 +101,11 @@ mgr = DatasetManager(
 # Run these only if you don't have training and testing sets
 # THIS IS WORKING FINE:
 # IF ANY ERROR WITH TFIDF POPS UP, ROLLBACK HERE
-
+"""
 mgr.tokenize(size=500, only_tfidf=False)
 mgr.generate_embeddings_from_tfidf(glove_embedding_len=glove_embedding_len)
 mgr.generate_emebedded_documents()
-
+"""
 
 # raise Exception('Stop here before training')
 
