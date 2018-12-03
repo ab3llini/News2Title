@@ -17,7 +17,8 @@ def encoder_decoder(
         num_decoder_tokens,
         glove_embedding_len,
         embeddings,
-        optimizer=RMSprop,
+        optimizer,
+        dense_activation,
         loss=categorical_crossentropy
 
 ):
@@ -73,7 +74,7 @@ def encoder_decoder(
 
     decoder_dense = Dense(
         num_decoder_tokens,
-        activation='softmax',
+        activation=dense_activation,
         name="DECODER_DENSE"
     )
 
