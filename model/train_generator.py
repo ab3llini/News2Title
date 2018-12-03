@@ -86,16 +86,16 @@ callbacks = [early_stopping, tensorboard]
 # -------------------------------------------------------------------------------------
 
 mgr = DatasetManager(max_headline_len=max_headline_len, max_article_len=max_article_len,
-    min_headline_len=min_headline_len, min_article_len=min_article_len, verbose=True)
+                     min_headline_len=min_headline_len, min_article_len=min_article_len, verbose=True)
 
 # BEFORE PROCEEDING, YOU MUST HAVE ALREADY TOKENIZED DATASET AND CREATED EMBEDDINGS
 # Run these only if you don't have training and testing sets
 # THIS IS WORKING FINE:
 # IF ANY ERROR WITH TFIDF POPS UP, ROLLBACK HERE
 
-mgr.tokenize(size=500, only_tfidf=False)
-mgr.generate_embeddings(glove_embedding_len=glove_embedding_len)
-mgr.generate_emebedded_documents()
+# mgr.tokenize(size=500, only_tfidf=False)
+# mgr.generate_embeddings(glove_embedding_len=glove_embedding_len)
+# mgr.generate_emebedded_documents()
 
 
 # raise Exception('Stop here before training')
@@ -116,9 +116,9 @@ print('Lock \'n loaded.. We are ready to make science, sit tight..')
 print('\nBuilding model')
 
 model = encoder_decoder(latent_dim=latent_dim, max_encoder_seq_len=max_article_len,
-    max_decoder_seq_len=max_headline_len, num_encoder_tokens=embeddings.shape[0],
-    num_decoder_tokens=embeddings.shape[0], glove_embedding_len=glove_embedding_len, embeddings=embeddings,
-    optimizer=optimizer, dense_activation=dense_activation, loss=loss)
+                        max_decoder_seq_len=max_headline_len, num_encoder_tokens=embeddings.shape[0],
+                        num_decoder_tokens=embeddings.shape[0], glove_embedding_len=glove_embedding_len,
+                        embeddings=embeddings, optimizer=optimizer, dense_activation=dense_activation, loss=loss)
 
 model.summary()
 
@@ -139,11 +139,11 @@ data_generator = DataGenerator(max_decoder_seq_len=max_headline_len, decoder_tok
 
 # TODO: steps_per_epoch is missing the correct termination for each epoch.
 model.fit_generator(generator=data_generator.generate_train(), validation_data=data_generator.generate_test(),
-    validation_steps=data_generator.get_steps_validation(), epochs=tot_epochs, max_queue_size=2,
-    use_multiprocessing=False, verbose=2, steps_per_epoch=data_generator.get_steps_per_epoch(), callbacks=callbacks)
+                    validation_steps=data_generator.get_steps_validation(), epochs=tot_epochs, max_queue_size=2,
+                    use_multiprocessing=False, verbose=2, steps_per_epoch=data_generator.get_steps_per_epoch(),
+                    callbacks=callbacks)
 # Save model
 print('Saving model...')
 model.save(
-    model_name + ts + '.h5')  # ----------------------------------------------------------------------------------------
-# ------------------------------------- END MODEL ----------------------------------------
+    model_name + ts + '.h5')  # ----------------------------------------------------------------------------------------  # ------------------------------------- END MODEL ----------------------------------------
 # ----------------------------------------------------------------------------------------

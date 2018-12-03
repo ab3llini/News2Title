@@ -73,7 +73,7 @@ def encoder_decoder(
     decoder_outputs, _, _ = decoder(decoder_embedding, initial_state=encoder_states)
 
     decoder_dense = Dense(
-        num_decoder_tokens,
+        glove_embedding_len,
         activation=dense_activation,
         name="DECODER_DENSE"
     )
