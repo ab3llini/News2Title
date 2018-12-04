@@ -202,10 +202,104 @@ def embedding_distance(hypothesis, reference):
         return distance_score
 
 
+def intersection(lst1, lst2):
+    lst3 = [value for value in lst1 if value in lst2]
+    return lst3
+
+
+def find_common_between(a, b):
+
+    return intersection(a, b)
+
+
+def find_common_all(a, b, c):
+
+    common = intersection(a, b)
+    common = intersection(common, c)
+
+    return common
+
+def highlight(common_h, common_a, common_all, ph, rh, ra, c1, c2, c3):
+
+    ph_ = ph.copy()
+    rh_ = rh.copy()
+    ra_ = ra.copy()
+
+    for i, w in enumerate(ph_):
+        if w in common_h:
+            ph_[i] = '<b><font color="' + c1 + '">' + w + '</font></b>\n'
+        if w in common_a:
+            ph_[i] = '<b><font color="' + c2 + '">' + w + '</font></b>\n'
+        if w in common_all:
+            ph_[i] = '<b><font color="' + c3 + '">' + w + '</font></b>\n'
+
+    for i, w in enumerate(rh_):
+        if w in common_h:
+            rh_[i] = '<b><font color="' + c1 + '">' + w + '</font></b>\n'
+        if w in common_a:
+            rh_[i] = '<b><font color="' + c2 + '">' + w + '</font></b>\n'
+        if w in common_all:
+            rh_[i] = '<b><font color="' + c3 + '">' + w + '</font></b>\n'
+
+    for i, w in enumerate(ra_):
+        if w in common_h:
+            ra_[i] = '<b><font color="' + c1 + '">' + w + '</font></b>\n'
+        if w in common_a:
+            ra_[i] = '<b><font color="' + c2 + '">' + w + '</font></b>\n'
+        if w in common_all:
+            ra_[i] = '<b><font color="' + c3 + '">' + w + '</font></b>\n'
+
+    return clean(ph_), clean(rh_), clean(ra_)
+
+def difference(list1, list2):
+    new_list = []
+    for i in list1:
+        if i not in list2:
+            new_list.append(i)
+
+    for j in list2:
+        if j not in list1:
+            new_list.append(j)
+    return new_list
+
+def create_html_output(ph, rh, ra, bl):
+
+    common_all = find_common_all(ph, rh, ra)
+    common_a = difference(find_common_between(ph, rh), common_all)
+    common_b = difference(find_common_between(ph, ra), common_all)
+
+    a, b, c = highlight(common_a, common_b, common_all, ph, rh, ra, 'red', 'blue', 'green')
+
+    html = '<b>Predicted</b> : ' + a + '<br>\n'
+    html += '<b>Real</b> : ' + b + '<br>\n'
+    html += '<b>Article</b> : ' + c + '<br>\n'
+    html += '<b>BLEU</b> : ' + str(bl) + '<br>\n'
+    html += '<hr><br>\n'
+
+    return html
+
+
+def clean(s):
+
+    while 'unknown_token' in s:
+        s.remove('unknown_token')
+
+    while 'padding_token' in s:
+        s.remove('padding_token')
+
+    if 'start_token' in s:
+        s.remove('start_token')
+
+    if 'stop_token' in s:
+        s.remove('stop_token')
+
+    return ' '.join(s)
+
+
 list_BLEU = []
 list_embedding_score = []
 
-save_name = 'evaluation_forced_to_5.txt'
+save_name = 'evaluation_forced_to_5.html'
 
 # Clear file
 file = open(save_name, 'w+').close()
@@ -221,31 +315,12 @@ for article, headline in zip(encoder_input_data, decoder_input_data):
     real_headline = map_embeddings_to_clear_sentence(headline)
     real_article = map_embeddings_to_clear_sentence(article)
 
-    while 'unknown_token' in real_headline:
-        real_headline.remove('unknown_token')
-
-    while 'padding_token' in real_headline:
-        real_headline.remove('padding_token')
-
-    if 'stop_token' in real_headline:
-        real_headline.remove('stop_token')
-    if 'start_token' in real_headline:
-        real_headline.remove('start_token')
+    rh = clean(real_article)
 
     predicted_headline = (decode_sequence(np.array(article).reshape((1, max_article_len))))
 
-    while 'unknown_token' in predicted_headline:
-        predicted_headline.remove('unknown_token')
-
-    while 'padding_token' in predicted_headline:
-        predicted_headline.remove('padding_token')
-
-    if 'stop_token' in predicted_headline:
-        predicted_headline.remove('stop_token')
-
-    ph = ' '.join(predicted_headline)
-    rh = ' '.join(real_headline)
-    ra = ' '.join(real_article)
+    ph = clean(predicted_headline)
+    ra = clean(real_article)
 
     BLEU_score = nltk.translate.bleu_score.sentence_bleu([predicted_headline], real_headline, weights=[1])
 
@@ -260,7 +335,7 @@ for article, headline in zip(encoder_input_data, decoder_input_data):
         best_str = s
 
     # print(s)
-    file.write(s)
+    file.write(create_html_output(predicted_headline, real_headline, real_article, BLEU_score))
 
 print('final BLEU: {}, final Embedding Evaluation {}: '.format(np.mean(list_BLEU), np.mean(list_embedding_score)))
 print('BEST Headline:\n' + best_str)
