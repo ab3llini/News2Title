@@ -211,6 +211,8 @@ class DatasetManager:
 
             # Preprocessing: remove recurrent headlines (e.g: "- the new york times")
             frame['title'] = frame['title'].str.replace(' - The New York Times', '')
+            frame['title'] = frame['title'].str.replace(' - Breitbart', '')
+
 
             if self.verbose:
                 print('Removing non-ASCII chars..')
@@ -320,10 +322,6 @@ class DatasetManager:
             features = pickle.load(handle)
 
         return features
-
-    """
-    ******** DEPRECATED: This method was looking for tfidf on all documents
-    ******** CALL INSTEAD: tokenize_tfidf_locally()
     
     def generate_tfidf_globally(self,
                                            max_features,
@@ -355,6 +353,8 @@ class DatasetManager:
 
             # Preprocessing: remove recurrent headlines (e.g: "- the new york times")
             frame['title'] = frame['title'].str.replace(' - The New York Times', '')
+            frame['title'] = frame['title'].str.replace(' - Breitbart', '')
+
 
             if self.verbose:
                 print('Removing non-ASCII chars..')
@@ -437,7 +437,6 @@ class DatasetManager:
             print(available_ram())
 
         return vectorizer.get_feature_names()
-    """
 
     @staticmethod
     def load_embeddings(f_name='embeddings.pkl'):

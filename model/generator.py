@@ -76,6 +76,7 @@ class DataGenerator():
             for file in tqdm(self.test_list):
                 headline, articles, file_length = self.load_tokens(file)
                 encoder_input_data, decoder_input_data, decoder_target_data = get_inputs_outputs(x=articles, y=headline,
+                                                                                                 max_decoder_seq_len=self.max_decoder_seq_len,
                                                                                                  glove_embedding_len=self.glove_embedding_len,
                                                                                                  embeddings=self.embeddings)
                 yield [encoder_input_data, decoder_input_data], decoder_target_data

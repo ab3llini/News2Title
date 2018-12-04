@@ -1,25 +1,22 @@
 import sys
 import os
 import time
-from numpy import dot
-from numpy.linalg import norm
+import keras.backend as K
+import numpy as np
 
 this_path = os.path.dirname(os.path.realpath(__file__))
 root_path = os.path.abspath(os.path.join(this_path, os.pardir))
-# ciao
 tokenized_path = os.path.join(root_path, 'tokenized/')
 embedding_path = os.path.join(root_path, 'embedding/')
 
 sys.path.append(root_path)
 
 from model.generator import DataGenerator
-from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
-from keras.optimizers import RMSprop
-from keras.losses import categorical_crossentropy
+from keras.callbacks import EarlyStopping, TensorBoard
 from model.dataset_manager import DatasetManager
-from utility.model import *
 from utility.monitor import *
 from model.encoderdecoder import encoder_decoder
+from keras import losses
 
 # ---------------------------------------------------------------------------------
 # --------------------------------- CONFIGURATION ---------------------------------
@@ -28,7 +25,7 @@ from model.encoderdecoder import encoder_decoder
 ts = str(int(time.time()))
 
 # Define which embedding to use
-glove_embedding_len = 50
+glove_embedding_len = 300
 
 # Let's define some control variables, such as the max length of heads and desc
 # that we will use in our model
@@ -50,9 +47,39 @@ min_article_len = 10
 test_ratio = 0.1
 # chunk_size = 1000  # Size of each chunk
 # batch_size = 1000  # Batch size for training on each chunk
-tot_epochs = 500  # Number of epochs to train for.
+tot_epochs = 200  # Number of epochs to train for.
 epochs_per_chunk = 1  # Number of epochs to train each chunk on
-latent_dim = 512  # Latent dimensionality of the encoding space.
+latent_dim = 1000  # Latent dimensionality of the encoding space.
+
+embeddings = DatasetManager.load_embeddings()
+word2index = DatasetManager.load_word2index()
+
+index2word = {}
+
+for k, v in word2index.items():
+    if v == word2index['unknown_token']:
+        if v not in index2word:
+            index2word[v] = 'unknown_token'
+    else:
+        index2word[v] = k
+
+
+def find_closest_word_index(w):
+  diff = embeddings - w
+  delta = K.sum(diff * diff, axis=1)
+  i = K.argmin(delta)
+  return i
+
+
+def cosine_proximity(y_true, y_pred):
+
+    if index2word[find_closest_word_index(y_pred)] == 'stop_token' and index2word[find_closest_word_index(y_pred)] != 'stop_token':
+        return 10000
+
+    y_true = K.l2_normalize(y_true, axis=-1)
+    y_pred = K.l2_normalize(y_pred, axis=-1)
+    return -K.sum(y_true * y_pred, axis=-1)
+
 
 tensorboard_log_dir = os.path.join(root_path, 'tensorboard/emb')
 
@@ -63,27 +90,24 @@ dense_activation = 'linear'
 optimizer = 'rmsprop'
 
 
-def embedding_loss(y_true, y_pred):
-    dot(y_true, y_pred) / (norm(y_true) * norm(y_pred))
-
-
-loss = embedding_loss
+loss = cosine_proximity
 
 # Model save name
-model_name = 'n2t_full_embedding'
+model_name = 'n2t_full_embedding_', glove_embedding_len, '_latent_', latent_dim, '_cosine_patience_15.h5'
+
 
 # Overfitting config
-early_stopping = EarlyStopping(monitor='val_loss', patience=5, min_delta=0)
+early_stopping = EarlyStopping(monitor='val_loss', patience=15, min_delta=0)
 
 # Model checkpoint
 # checkpoint = ModelCheckpoint(filepath=model_name+'_earlystopped_.h5', monitor='val_loss', save_best_only=True)
 
 # Tensorboard
 # histogram_freq=1, write_graph=True
-tensorboard = TensorBoard(log_dir=tensorboard_log_dir, write_images=True, write_graph=True, histogram_freq=2)
+tensorboard = TensorBoard(log_dir=tensorboard_log_dir, write_graph=True)
 
 # Callbacks
-callbacks = [early_stopping, tensorboard]
+callbacks = [tensorboard]
 
 # -------------------------------------------------------------------------------------
 # --------------------------------- END CONFIGURATION ---------------------------------
@@ -101,16 +125,13 @@ mgr = DatasetManager(max_headline_len=max_headline_len, max_article_len=max_arti
 # THIS IS WORKING FINE:
 # IF ANY ERROR WITH TFIDF POPS UP, ROLLBACK HERE
 
+"""
 mgr.tokenize(size=2000, only_tfidf=False)
 mgr.generate_embeddings(glove_embedding_len=glove_embedding_len)
 mgr.generate_emebedded_documents()
-
+"""
 
 # raise Exception('Stop here before training')
-
-print('Before loading embeddings:', available_ram())
-embeddings = DatasetManager.load_embeddings()
-
 print('Before loading test set and allocating first iterator block:', available_ram())
 
 start_time = time.time()
@@ -142,8 +163,8 @@ print('*' * 100)
 print('*' * 100)
 #
 
-data_generator = DataGenerator(max_decoder_seq_len=max_headline_len, decoder_tokens=embeddings.shape[0], test_size=0.20,
-                               embeddings=embeddings, glove_embedding_len=glove_embedding_len)
+data_generator = DataGenerator(max_decoder_seq_len=max_headline_len, decoder_tokens=embeddings.shape[0],
+                               test_size=test_ratio, embeddings=embeddings, glove_embedding_len=glove_embedding_len)
 
 # TODO: steps_per_epoch is missing the correct termination for each epoch.
 model.fit_generator(generator=data_generator.generate_train(), validation_data=data_generator.generate_test(),
@@ -152,6 +173,4 @@ model.fit_generator(generator=data_generator.generate_train(), validation_data=d
                     callbacks=callbacks)
 # Save model
 print('Saving model...')
-model.save(
-    model_name + ts + '.h5')  # ----------------------------------------------------------------------------------------  # ------------------------------------- END MODEL ----------------------------------------
-# ----------------------------------------------------------------------------------------
+model.save(model)

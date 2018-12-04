@@ -19,7 +19,7 @@ def encoder_decoder(
         embeddings,
         optimizer,
         dense_activation,
-        loss=categorical_crossentropy
+        loss
 
 ):
     encoder_inputs = Input(
