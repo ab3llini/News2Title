@@ -51,7 +51,7 @@ min_article_len = 10
 test_ratio = 0.1
 #chunk_size = 1000  # Size of each chunk
 #batch_size = 1000  # Batch size for training on each chunk
-tot_epochs = 60  # Number of epochs to train for.
+tot_epochs = 1  # Number of epochs to train for.
 epochs_per_chunk = 1  # Number of epochs to train each chunk on
 latent_dim = 128  # Latent dimensionality of the encoding space.
 

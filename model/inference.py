@@ -5,6 +5,7 @@ import numpy as np
 import os
 import sys
 
+from scipy.spatial.distance import cosine
 from sklearn.model_selection import train_test_split
 from model.dataset_manager import DatasetManager, get_inputs_outputs
 
@@ -25,13 +26,13 @@ word2index = DatasetManager.load_word2index()
 num_encoder_tokens=num_decoder_tokens=embeddings.shape[0]
 max_encoder_seq_len = max_article_len
 max_decoder_seq_len = max_headline_len
-latent_dim = 64  # Latent dimensionality of the encoding space.
+latent_dim = 128  # Latent dimensionality of the encoding space.
 
 from model.generator import DataGenerator
 data_generator = DataGenerator(max_decoder_seq_len=max_headline_len, decoder_tokens=embeddings.shape[0],test_size=0.20)
 
 # Restore the model and reconstruct the encoder and decoder.
-trained_model = load_model('n2t_full_tfidf1543736589.h5')
+trained_model = load_model('n2t_full_tfidf_700001543872538.h5')
 # We reconstruct the model in order to make inference
 # Encoder reconstruction
 
@@ -132,51 +133,6 @@ def decode_sequence(input_seq):
         states_value = [h, c]
     return decoded_sentence
 
-"""
-OLD DECODE SEQUENCE
-def decode_sequence(input_seq):
-    # Encode the input as state vectors.
-    print(input_seq)
-    states_value = encoder_model.predict(input_seq)
-
-    # Generate empty target sequence of length 1.
-    #target_seq = np.zeros((1, 1, num_decoder_tokens))
-    target_seq = np.zeros((1, max_decoder_seq_len))
-
-    # Populate the first character of target sequence with the start character.
-    #TODO: spara ad 1 il valore dell'embedding token per start.
-    #target_seq[0, 0, word2index['START_tkn']] = 1.
-    target_seq[0, 0] = word2index['start_token']
-
-    # Sampling loop for a batch of sequences
-    # (to simplify, here we assume a batch of size 1).
-    stop_condition = False
-    decoded_sentence = ''
-
-    while not stop_condition:
-        output_tokens, h, c = decoder_model.predict(
-            [target_seq] + states_value)
-
-        # Sample a token
-        # sampled_token_index = np.argmax(output_tokens[0, -1, :])
-        sampled_token_index = np.argmax(output_tokens[0,-1, :])
-        sampled_char = index2word[sampled_token_index]
-        decoded_sentence += ' '+sampled_char
-
-        # Exit condition: either hit max length
-        # or find stop character.
-        if (sampled_char == 'STOP_tkn' or
-           len(decoded_sentence) > max_decoder_seq_len):
-            stop_condition = True
-
-        # Update the target sequence (of length 1).
-        #target_seq = np.zeros((1,1, num_decoder_tokens))
-        #target_seq[0, 0, sampled_token_index] = 1.
-        target_seq[0,0] = sampled_token_index
-        # Update states
-        states_value = [h, c]
-    return decoded_sentence
-"""
 import pickle
 
 this_path = os.path.dirname(os.path.realpath(__file__))
@@ -208,7 +164,51 @@ encoder_input_data, decoder_input_data, decoder_target_data = get_inputs_outputs
     num_decoder_tokens=embeddings.shape[0]
 )
 
-for element in encoder_input_data:
-    print(element)
-    # print(decode_sequence(np.array(element).reshape((1,30))))
+def map_embeddings_to_clear_sentence(emb_list):
+    phrase = []
+    for sampled_token_index in emb_list:
+        word = index2word[sampled_token_index]
+        phrase.append(str(word))
+    return phrase
+import nltk
+
+def get_semantic_averaged(emb_list):
+    total_elements = 0
+    sum_embedding_vector = np.zeros((1,embeddings.shape[1]))
+    #print(index2word.values())
+    for word_token in emb_list:
+        if word_token not in ['unknown_token','padding_token','start_token'] and (word_token in index2word.values()):
+            #print(word_token)
+            try:
+                word_embedding = embeddings[index2word[word_token], :]
+                sum_embedding_vector = np.sum(sum_embedding_vector, word_embedding)
+                total_elements = total_elements + 1
+            except Exception as e:
+                print('No buono')
+    averaged_embedding = np.true_divide(sum_embedding_vector,total_elements)
+    return averaged_embedding
+
+def embedding_distance(hypothesis,reference):
+    hyp_embedd = get_semantic_averaged(hypothesis)
+    ref_embedd = get_semantic_averaged(reference)
+    distance_score = 1 - cosine(hyp_embedd,ref_embedd) #it is the cosine similarity
+    return distance_score
+
+list_BLEU = []
+list_embedding_score = []
+for article,headline in zip(encoder_input_data,decoder_input_data):
+    real_headline = (map_embeddings_to_clear_sentence(headline))
+    while 'unknown_token' in real_headline: real_headline.remove('unknown_token')
+    real_headline.remove('stop_token')
+    predicted_headline = (decode_sequence(np.array(article).reshape((1, 30))))
+    print('Predicted --> {}\n  Real Headline --> {}'.format(predicted_headline, real_headline))
+    BLEU_score = nltk.translate.bleu_score.sentence_bleu([predicted_headline], real_headline, weights=[1])
+    list_BLEU.append(BLEU_score)
+    #distance_score = embedding_distance(hypothesis,reference)
+    #list_embedding_score.append(distance_score)
+
+print('final BLEU: {}, final Embedding Evaluation: '.format(np.mean(list_BLEU)))
+
+#TODO: fix embedding evaluation, fix bleu stuff.
+
 
