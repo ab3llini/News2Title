@@ -51,7 +51,7 @@ min_article_len = 10
 test_ratio = 0.1
 #chunk_size = 1000  # Size of each chunk
 #batch_size = 1000  # Batch size for training on each chunk
-tot_epochs = 500  # Number of epochs to train for.
+tot_epochs = 50  # Number of epochs to train for.
 epochs_per_chunk = 1  # Number of epochs to train each chunk on
 latent_dim = 256  # Latent dimensionality of the encoding space.
 
@@ -65,7 +65,7 @@ optimizer = 'rmsprop'
 loss = 'categorical_crossentropy'
 
 # Model save name
-model_name = 'n2t_full_tfidf_50000_last'
+model_name = 'n2t_full_tfidf_50000_last-no-breitbart'
 
 # Overfitting config
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, min_delta=0)
