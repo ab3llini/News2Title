@@ -20,19 +20,30 @@ max_article_len = 30
 min_headline_len = 5
 min_article_len = 10
 glove_embedding_len = 50
+
+mgr = DatasetManager(
+    max_headline_len=max_headline_len,
+    max_article_len=max_article_len,
+    min_headline_len=min_headline_len,
+    min_article_len=min_article_len,
+    verbose=True
+)
+
+mgr.generate_embeddings_from_tfidf(50)
+
 embeddings = DatasetManager.load_embeddings()
 word2index = DatasetManager.load_word2index()
 
 num_encoder_tokens=num_decoder_tokens=embeddings.shape[0]
 max_encoder_seq_len = max_article_len
 max_decoder_seq_len = max_headline_len
-latent_dim = 128  # Latent dimensionality of the encoding space.
+latent_dim = 64  # Latent dimensionality of the encoding space.
 
 from model.generator import DataGenerator
-data_generator = DataGenerator(max_decoder_seq_len=max_headline_len, decoder_tokens=embeddings.shape[0],test_size=0.20)
+data_generator = DataGenerator(max_decoder_seq_len=max_headline_len, decoder_tokens=embeddings.shape[0], test_size=0.20)
 
 # Restore the model and reconstruct the encoder and decoder.
-trained_model = load_model('n2t_full_tfidf_700001543872538.h5')
+trained_model = load_model('n2t_tfidf_proba_50k_1543736589.h5')
 # We reconstruct the model in order to make inference
 # Encoder reconstruction
 
@@ -96,6 +107,7 @@ for k, v in word2index.items():
     else:
         index2word[v] = k
 
+min_before_stop = 5
 
 def decode_sequence(input_seq):
     # Encode the input as state vectors.
@@ -115,8 +127,10 @@ def decode_sequence(input_seq):
         output_tokens, h, c = decoder_model.predict(
             [decoder_input] + states_value)
 
+        limit = len(word2index) if len(decoded_sentence) > min_before_stop else len(word2index)  - 3
+
         # Sample a token
-        sampled_token_index = np.argmax(output_tokens[0, len(decoded_sentence), :])
+        sampled_token_index = np.argmax(output_tokens[0, len(decoded_sentence), :limit])
         sampled_char = index2word[sampled_token_index]
         decoded_sentence.append(sampled_char)
 
