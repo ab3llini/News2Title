@@ -46,13 +46,11 @@ class DatasetManager:
     """
 
     def __init__(self, min_headline_len, min_article_len, max_headline_len, max_article_len, verbose=False):
-
         self.min_headline_len = min_headline_len
         self.min_article_len = min_article_len
         self.max_article_len = max_article_len
         self.max_headline_len = max_headline_len
         self.verbose = verbose
-
         self.dataset = [os.path.join(dataset_path, file) for file in files]
 
     def tokenize_tfidf_locally(self, n_features=100, size=500):

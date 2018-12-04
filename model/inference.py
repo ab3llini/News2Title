@@ -173,26 +173,27 @@ def map_embeddings_to_clear_sentence(emb_list):
 import nltk
 
 def get_semantic_averaged(emb_list):
-    total_elements = 0
+    total_elements = 1
     sum_embedding_vector = np.zeros((1,embeddings.shape[1]))
-    #print(index2word.values())
+
     for word_token in emb_list:
-        if word_token not in ['unknown_token','padding_token','start_token'] and (word_token in index2word.values()):
-            #print(word_token)
-            try:
-                word_embedding = embeddings[index2word[word_token], :]
-                sum_embedding_vector = np.sum(sum_embedding_vector, word_embedding)
-                total_elements = total_elements + 1
-            except Exception as e:
-                print('No buono')
-    averaged_embedding = np.true_divide(sum_embedding_vector,total_elements)
+        #print(word_token in index2word.values())
+        if word_token not in ['unknown_token','padding_token','start_token','stop_token'] and word_token in word2index.keys():
+            word_embedding = embeddings[word2index[word_token], :]
+            sum_embedding_vector = np.add(sum_embedding_vector, word_embedding)
+            total_elements = total_elements + 1
+    sum_embedding_vector = sum_embedding_vector[0]
+    averaged_embedding = sum_embedding_vector/total_elements
     return averaged_embedding
 
 def embedding_distance(hypothesis,reference):
     hyp_embedd = get_semantic_averaged(hypothesis)
     ref_embedd = get_semantic_averaged(reference)
-    distance_score = 1 - cosine(hyp_embedd,ref_embedd) #it is the cosine similarity
-    return distance_score
+    if sum(hyp_embedd) == 0 or sum (ref_embedd) == 0:
+        return 0
+    else:
+        distance_score = 1 - cosine(hyp_embedd,ref_embedd) #it is the cosine similarity
+        return distance_score
 
 list_BLEU = []
 list_embedding_score = []
@@ -201,13 +202,13 @@ for article,headline in zip(encoder_input_data,decoder_input_data):
     while 'unknown_token' in real_headline: real_headline.remove('unknown_token')
     real_headline.remove('stop_token')
     predicted_headline = (decode_sequence(np.array(article).reshape((1, 30))))
-    print('Predicted --> {}\n  Real Headline --> {}'.format(predicted_headline, real_headline))
+    #print('Predicted --> {}\n  Real Headline --> {}'.format(predicted_headline, real_headline))
     BLEU_score = nltk.translate.bleu_score.sentence_bleu([predicted_headline], real_headline, weights=[1])
     list_BLEU.append(BLEU_score)
-    #distance_score = embedding_distance(hypothesis,reference)
-    #list_embedding_score.append(distance_score)
+    distance_score = embedding_distance(predicted_headline,real_headline)
+    list_embedding_score.append(distance_score)
 
-print('final BLEU: {}, final Embedding Evaluation: '.format(np.mean(list_BLEU)))
+print('final BLEU: {}, final Embedding Evaluation {}: '.format(np.mean(list_BLEU),np.mean(list_embedding_score)))
 
 #TODO: fix embedding evaluation, fix bleu stuff.
 
