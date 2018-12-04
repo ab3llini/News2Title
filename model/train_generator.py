@@ -51,9 +51,9 @@ min_article_len = 10
 test_ratio = 0.1
 #chunk_size = 1000  # Size of each chunk
 #batch_size = 1000  # Batch size for training on each chunk
-tot_epochs = 1  # Number of epochs to train for.
+tot_epochs = 500  # Number of epochs to train for.
 epochs_per_chunk = 1  # Number of epochs to train each chunk on
-latent_dim = 128  # Latent dimensionality of the encoding space.
+latent_dim = 256  # Latent dimensionality of the encoding space.
 
 tensorboard_log_dir = os.path.join(root_path, 'tensorboard/News2Title')
 
@@ -65,10 +65,10 @@ optimizer = 'rmsprop'
 loss = 'categorical_crossentropy'
 
 # Model save name
-model_name = 'n2t_full_tfidf_70000'
+model_name = 'n2t_full_tfidf_50000_last'
 
 # Overfitting config
-early_stopping = EarlyStopping(monitor='val_loss', patience=5, min_delta=0)
+early_stopping = EarlyStopping(monitor='val_loss', patience=10, min_delta=0)
 
 # Model checkpoint
 # checkpoint = ModelCheckpoint(filepath=model_name+'_earlystopped_.h5', monitor='val_loss', save_best_only=True)
@@ -102,8 +102,8 @@ mgr = DatasetManager(
 # THIS IS WORKING FINE:
 # IF ANY ERROR WITH TFIDF POPS UP, ROLLBACK HERE
 
-mgr.tokenize(size=250, only_tfidf=False)
-mgr.generate_embeddings_from_tfidf(glove_embedding_len=glove_embedding_len, fname='TF-IDF_70000.pkl')
+mgr.tokenize(size=500, only_tfidf=False)
+mgr.generate_embeddings_from_tfidf(glove_embedding_len=glove_embedding_len, fname='TF-IDF_50000.pkl')
 mgr.generate_emebedded_documents()
 
 

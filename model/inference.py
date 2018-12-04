@@ -29,21 +29,22 @@ mgr = DatasetManager(
     verbose=True
 )
 
-mgr.generate_embeddings_from_tfidf(50)
 
 embeddings = DatasetManager.load_embeddings()
 word2index = DatasetManager.load_word2index()
 
+mgr.generate_emebedded_documents()
+
 num_encoder_tokens=num_decoder_tokens=embeddings.shape[0]
 max_encoder_seq_len = max_article_len
 max_decoder_seq_len = max_headline_len
-latent_dim = 64  # Latent dimensionality of the encoding space.
+latent_dim = 256  # Latent dimensionality of the encoding space.
 
 from model.generator import DataGenerator
 data_generator = DataGenerator(max_decoder_seq_len=max_headline_len, decoder_tokens=embeddings.shape[0], test_size=0.20)
 
 # Restore the model and reconstruct the encoder and decoder.
-trained_model = load_model('n2t_tfidf_proba_50k_1543736589.h5')
+trained_model = load_model('n2t_full_tfidf1543736589.h5')
 # We reconstruct the model in order to make inference
 # Encoder reconstruction
 
@@ -171,6 +172,7 @@ def load_tokens(file):
         return headlines, articles, data.shape[0]
 
 headline, articles, file_length = load_tokens(test_list[0])
+
 encoder_input_data, decoder_input_data, decoder_target_data = get_inputs_outputs(
     x=articles,
     y=headline,
@@ -216,7 +218,7 @@ for article,headline in zip(encoder_input_data,decoder_input_data):
     while 'unknown_token' in real_headline: real_headline.remove('unknown_token')
     real_headline.remove('stop_token')
     predicted_headline = (decode_sequence(np.array(article).reshape((1, 30))))
-    #print('Predicted --> {}\n  Real Headline --> {}'.format(predicted_headline, real_headline))
+    print('Predicted --> {}\n  Real Headline --> {}'.format(predicted_headline, real_headline))
     BLEU_score = nltk.translate.bleu_score.sentence_bleu([predicted_headline], real_headline, weights=[1])
     list_BLEU.append(BLEU_score)
     distance_score = embedding_distance(predicted_headline,real_headline)

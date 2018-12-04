@@ -86,6 +86,8 @@ class DatasetManager:
 
             # Preprocessing: remove recurrent headlines (e.g: "- the new york times")
             frame['title'] = frame['title'].str.replace(' - The New York Times', '')
+            frame['title'] = frame['title'].str.replace(' - Breibart', '')
+
 
             if self.verbose:
                 print('Removing non-ASCII chars..')
@@ -209,6 +211,8 @@ class DatasetManager:
 
             # Preprocessing: remove recurrent headlines (e.g: "- the new york times")
             frame['title'] = frame['title'].str.replace(' - The New York Times', '')
+            frame['title'] = frame['title'].str.replace(' - Breibart', '')
+            frame['title'] = frame['title'].str.replace(' - breibart', '')
 
             if self.verbose:
                 print('Removing non-ASCII chars..')

@@ -21,7 +21,7 @@ import numpy as np
 
 class DataGenerator():
 
-    def __init__(self,max_decoder_seq_len,decoder_tokens,test_size=0.33):
+    def __init__(self,max_decoder_seq_len, decoder_tokens,test_size=0.33):
         this_path = os.path.dirname(os.path.realpath(__file__))
         root_path = os.path.abspath(os.path.join(this_path, os.pardir))
         embedding_prefix = 'EMB_'
