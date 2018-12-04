@@ -465,7 +465,7 @@ class DatasetManager:
                       'try rebuilding test set with less elements')
                 raise me
 
-    def generate_embeddings_from_tfidf(self, glove_embedding_len, embedding_dir='embedding/', ):
+    def generate_embeddings_from_tfidf(self, glove_embedding_len, embedding_dir='embedding/'):
         print('-' * 100)
         print('Computing embedding matrix. This process might require some time')
         print('For each tokenized file, we will update our matrix')
