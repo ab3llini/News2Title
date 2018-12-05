@@ -95,7 +95,7 @@ optimizer = 'rmsprop'
 loss = losses.cosine_proximity
 
 # Model save name
-model_name = 'n2t_full_embedding_', glove_embedding_len, '_latent_', latent_dim, '_cosine_patience_15.h5'
+model_name = 'n2t_full_embedding_' + str(glove_embedding_len) + '_latent_' + str(latent_dim) + '_cosine_patience_15.h5'
 
 
 # Overfitting config
