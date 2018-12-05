@@ -102,10 +102,11 @@ mgr = DatasetManager(
 # THIS IS WORKING FINE:
 # IF ANY ERROR WITH TFIDF POPS UP, ROLLBACK HERE
 
-mgr.tokenize(size=500, only_tfidf=False)
+# mgr.tokenize(size=500, only_tfidf=False)
 mgr.generate_embeddings_from_tfidf(glove_embedding_len=glove_embedding_len, fname='TF-IDF_50000.pkl')
 mgr.generate_emebedded_documents()
 
+raise Exception("STOP")
 
 # raise Exception('Stop here before training')
 
