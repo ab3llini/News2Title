@@ -3,6 +3,7 @@ import os
 import time
 import keras.backend as K
 import numpy as np
+import tensorflow as tf
 
 this_path = os.path.dirname(os.path.realpath(__file__))
 root_path = os.path.abspath(os.path.join(this_path, os.pardir))
@@ -47,7 +48,7 @@ min_article_len = 10
 test_ratio = 0.1
 # chunk_size = 1000  # Size of each chunk
 # batch_size = 1000  # Batch size for training on each chunk
-tot_epochs = 200  # Number of epochs to train for.
+tot_epochs = 50  # Number of epochs to train for.
 epochs_per_chunk = 1  # Number of epochs to train each chunk on
 latent_dim = 1000  # Latent dimensionality of the encoding space.
 
@@ -71,15 +72,16 @@ def find_closest_word_index(w):
   return i
 
 
+
 def cosine_proximity(y_true, y_pred):
 
-    if index2word[find_closest_word_index(y_pred)] == 'stop_token' and index2word[find_closest_word_index(y_pred)] != 'stop_token':
-        return 10000
+    for et, ep in zip(tf.unstack(y_pred), tf.unstack(y_true)):
+        if index2word[find_closest_word_index(ep)] == 'stop_token' and index2word[find_closest_word_index(et)] != 'stop_token':
+            return 10000
 
     y_true = K.l2_normalize(y_true, axis=-1)
     y_pred = K.l2_normalize(y_pred, axis=-1)
-    return -K.sum(y_true * y_pred, axis=-1)
-
+    return - K.sum(y_true * y_pred, axis=-1)
 
 tensorboard_log_dir = os.path.join(root_path, 'tensorboard/emb')
 
@@ -90,14 +92,14 @@ dense_activation = 'linear'
 optimizer = 'rmsprop'
 
 
-loss = cosine_proximity
+loss = losses.cosine_proximity
 
 # Model save name
 model_name = 'n2t_full_embedding_', glove_embedding_len, '_latent_', latent_dim, '_cosine_patience_15.h5'
 
 
 # Overfitting config
-early_stopping = EarlyStopping(monitor='val_loss', patience=15, min_delta=0)
+early_stopping = EarlyStopping(monitor='val_loss', patience=2, min_delta=0)
 
 # Model checkpoint
 # checkpoint = ModelCheckpoint(filepath=model_name+'_earlystopped_.h5', monitor='val_loss', save_best_only=True)
@@ -107,7 +109,7 @@ early_stopping = EarlyStopping(monitor='val_loss', patience=15, min_delta=0)
 tensorboard = TensorBoard(log_dir=tensorboard_log_dir, write_graph=True)
 
 # Callbacks
-callbacks = [tensorboard]
+callbacks = [tensorboard, early_stopping]
 
 # -------------------------------------------------------------------------------------
 # --------------------------------- END CONFIGURATION ---------------------------------
@@ -126,7 +128,7 @@ mgr = DatasetManager(max_headline_len=max_headline_len, max_article_len=max_arti
 # IF ANY ERROR WITH TFIDF POPS UP, ROLLBACK HERE
 
 """
-mgr.tokenize(size=2000, only_tfidf=False)
+mgr.tokenize(size=1000, only_tfidf=False)
 mgr.generate_embeddings(glove_embedding_len=glove_embedding_len)
 mgr.generate_emebedded_documents()
 """
