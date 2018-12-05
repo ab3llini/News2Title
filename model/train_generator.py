@@ -50,7 +50,7 @@ test_ratio = 0.1
 # batch_size = 1000  # Batch size for training on each chunk
 tot_epochs = 50  # Number of epochs to train for.
 epochs_per_chunk = 1  # Number of epochs to train each chunk on
-latent_dim = 1000  # Latent dimensionality of the encoding space.
+latent_dim = 512  # Latent dimensionality of the encoding space.
 
 embeddings = DatasetManager.load_embeddings()
 word2index = DatasetManager.load_word2index()
@@ -99,7 +99,7 @@ model_name = 'n2t_full_embedding_', glove_embedding_len, '_latent_', latent_dim,
 
 
 # Overfitting config
-early_stopping = EarlyStopping(monitor='val_loss', patience=2, min_delta=0)
+early_stopping = EarlyStopping(monitor='val_loss', patience=5, min_delta=0)
 
 # Model checkpoint
 # checkpoint = ModelCheckpoint(filepath=model_name+'_earlystopped_.h5', monitor='val_loss', save_best_only=True)
@@ -175,4 +175,4 @@ model.fit_generator(generator=data_generator.generate_train(), validation_data=d
                     callbacks=callbacks)
 # Save model
 print('Saving model...')
-model.save(model)
+model.save(model_name)
