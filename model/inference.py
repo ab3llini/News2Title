@@ -118,6 +118,7 @@ def decode_sequence(input_seq):
         # sampled_token_index = np.argmax(output_tokens[0, len(decoded_sentence), :])
 
         sampled_char = index2word[sampled_token_index]
+
         decoded_sentence.append(sampled_char)
 
         # Exit condition: either hit max length
