@@ -40,7 +40,7 @@ from model.generator import DataGenerator
 data_generator = DataGenerator(max_decoder_seq_len=max_headline_len, decoder_tokens=embeddings.shape[0], test_size=0.20)
 
 # Restore the model and reconstruct the encoder and decoder.
-trained_model = load_model('n2t_full_tfidf_50000_last1543905524.h5')
+trained_model = load_model('n2t_full_tfidf1543736589.h5')
 # We reconstruct the model in order to make inference
 # Encoder reconstruction
 
@@ -91,7 +91,7 @@ for k, v in word2index.items():
     else:
         index2word[v] = k
 
-min_before_stop = 5
+min_before_stop = 0
 
 
 def decode_sequence(input_seq):
@@ -300,7 +300,7 @@ def clean(s):
 list_BLEU = []
 list_embedding_score = []
 
-save_name = 'evaluation_forced_to_5.html'
+save_name = 'evaluation_unforced.html'
 
 # Clear file
 file = open(save_name, 'w+').close()
