@@ -70,8 +70,7 @@ print('We will train for a total of', config.tot_epochs, 'epochs')
 print('-' * 100)
 
 data_generator = DataGenerator(max_decoder_seq_len=config.max_headline_len, decoder_tokens=embeddings.shape[0],
-                               test_size=config.test_ratio, embeddings=embeddings,
-                               glove_embedding_len=config.glove_embedding_len, )
+                               test_size=config.test_ratio)
 
 model.fit_generator(generator=data_generator.generate_train(), validation_data=data_generator.generate_test(),
                     validation_steps=data_generator.get_steps_validation(), epochs=config.tot_epochs, max_queue_size=2,
