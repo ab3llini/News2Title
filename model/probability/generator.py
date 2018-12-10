@@ -6,23 +6,24 @@ from tqdm import tqdm
 import numpy as np
 
 this_path = os.path.dirname(os.path.realpath(__file__))
-root_path = os.path.abspath(os.path.join(this_path, os.pardir, os.pardir))
+root_path = os.path.abspath(os.path.join(this_path, os.pardir))
+
 sys.path.append(root_path)
 
 from model import config
-from model.embedding.output_generator import get_inputs_outputs
+from model.probability.output_generator import get_inputs_outputs
 
 config = config.embedding_cfg
 
 
 class DataGenerator():
 
-    def __init__(self, max_decoder_seq_len, decoder_tokens, embeddings, glove_embedding_len, test_size=0.33):
+    def __init__(self, max_decoder_seq_len, decoder_tokens, test_size=0.33):
+        this_path = os.path.dirname(os.path.realpath(__file__))
+        root_path = os.path.abspath(os.path.join(this_path, os.pardir))
         embedding_prefix = 'EMB_'
         tokenized_prefix = 'A'
         tokenized_path = os.path.join(root_path, config.preprocess_folder)
-        self.embeddings = embeddings
-        self.glove_embedding_len = glove_embedding_len
         filelist = []
         import ntpath
 
@@ -59,8 +60,7 @@ class DataGenerator():
                 headline, articles, file_length = self.load_tokens(file)
                 encoder_input_data, decoder_input_data, decoder_target_data = get_inputs_outputs(x=articles, y=headline,
                                                                                                  max_decoder_seq_len=self.max_decoder_seq_len,
-                                                                                                 glove_embedding_len=self.glove_embedding_len,
-                                                                                                 embeddings=self.embeddings)
+                                                                                                 num_decoder_tokens=self.decoder_tokens)
                 yield [encoder_input_data, decoder_input_data], decoder_target_data
 
     def generate_test(self):
@@ -69,6 +69,5 @@ class DataGenerator():
                 headline, articles, file_length = self.load_tokens(file)
                 encoder_input_data, decoder_input_data, decoder_target_data = get_inputs_outputs(x=articles, y=headline,
                                                                                                  max_decoder_seq_len=self.max_decoder_seq_len,
-                                                                                                 glove_embedding_len=self.glove_embedding_len,
-                                                                                                 embeddings=self.embeddings)
+                                                                                                 num_decoder_tokens=self.decoder_tokens)
                 yield [encoder_input_data, decoder_input_data], decoder_target_data
