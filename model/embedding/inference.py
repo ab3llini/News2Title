@@ -38,10 +38,11 @@ data_generator = DataGenerator(max_decoder_seq_len=config.max_headline_len, deco
                                glove_embedding_len=config.glove_embedding_len)
 
 # Restore the model and reconstruct the encoder and decoder.
-trained_model = load_model('n2t_full_embedding_512_cosine1543883336.h5')
+trained_model = load_model('n2t_full_embedding_50_latent_512_cosine_patience_5.h5')
 # We reconstruct the model in order to make inference
 # Encoder reconstruction
 
+print(trained_model.input[0])
 
 encoder_inputs = trained_model.input[0]
 # Input(shape=(max_encoder_seq_len,), name='ENCODER_INPUT')

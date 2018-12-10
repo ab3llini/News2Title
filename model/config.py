@@ -33,7 +33,7 @@ embedding_cfg = DotDict({
     # Split ratio
     'test_ratio': 0.2,
 
-    'tot_epochs': 50,  # Number of epochs to train for.
+    'tot_epochs': 1,  # Number of epochs to train for.
     'epochs_per_chunk': 1,  # Number of epochs to train each chunk on
     'latent_dim': 512,  # Latent dimensionality of the encoding space.
 

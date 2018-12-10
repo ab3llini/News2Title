@@ -1,5 +1,6 @@
 import sys
 import os
+import time
 
 this_path = os.path.dirname(os.path.realpath(__file__))
 root_path = os.path.abspath(os.path.join(this_path, os.pardir, os.pardir))
@@ -18,7 +19,7 @@ config = config.embedding_cfg
 
 # Model save name
 model_name = 'n2t_full_embedding_' + str(config.glove_embedding_len) + '_latent_' + str(
-    config.latent_dim) + '_cosine_patience_5.h5 '
+    config.latent_dim) + '_cosine_patience_5.h5'
 
 # Overfitting avoidance
 early_stopping = EarlyStopping(monitor='val_loss', patience=5, min_delta=0)
@@ -77,6 +78,9 @@ model.fit_generator(generator=data_generator.generate_train(), validation_data=d
                     validation_steps=data_generator.get_steps_validation(), epochs=config.tot_epochs, max_queue_size=2,
                     use_multiprocessing=False, verbose=2, steps_per_epoch=data_generator.get_steps_per_epoch(),
                     callbacks=callbacks)
+
+
+
 # Save model
 print('Saving model...')
 model.save(model_name)
