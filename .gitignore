@@ -5,7 +5,6 @@
 
 /dataset/articles*
 
-*.h5
 
 # Created by https://www.gitignore.io/api/pycharm
 # Edit at https://www.gitignore.io/?templates=pycharm
