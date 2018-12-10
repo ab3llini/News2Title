@@ -33,7 +33,6 @@ tensorboard = TensorBoard(log_dir=config.tensorboard_log_dir, write_graph=True)
 # Callbacks
 callbacks = [tensorboard, early_stopping]
 
-print(config.preprocess_data)
 
 if config.preprocess_data:
     # -------------------------------------------------------------------------------------
@@ -44,11 +43,11 @@ if config.preprocess_data:
                          min_headline_len=config.min_headline_len, min_article_len=config.min_article_len, verbose=True,
                          get_in_out=output_generator.get_inputs_outputs)
     mgr.tokenize(size=500, only_tfidf=False, folder=config.preprocess_folder)
-    mgr.generate_embeddings_from_tfidf(glove_embedding_len=config.glove_embedding_len, fname='TF-IDF_50000.pkl')
-    mgr.generate_emebedded_documents(tokenized_dir=config.preprocess_folder)
+    mgr.generate_embeddings_from_tfidf(glove_embedding_len=config.glove_embedding_len, fname='TF-IDF_50000.pkl',embedding_dir=config.embedding_matrix_location)
+    mgr.generate_emebedded_documents(tokenized_dir=config.preprocess_folder, embedding_dir=config.embedding_matrix_location)
 
-embeddings = DatasetManager.load_embeddings()
-word2index = DatasetManager.load_word2index()
+embeddings = DatasetManager.load_embeddings(embedding_dir=config.embedding_matrix_location)
+word2index = DatasetManager.load_word2index(embedding_dir=config.embedding_matrix_location)
 
 # ----------------------------------------------------------------------------------------
 # ----------------------------------------- TRAIN ----------------------------------------

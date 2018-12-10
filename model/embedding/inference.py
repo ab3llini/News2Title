@@ -14,7 +14,6 @@ this_path = os.path.dirname(os.path.realpath(__file__))
 root_path = os.path.abspath(os.path.join(this_path, os.pardir, os.pardir))
 embedding_prefix = 'EMB_'
 tokenized_prefix = 'A'
-tokenized_path = os.path.join(root_path, 'tokenized/')
 
 sys.path.append(root_path)
 
@@ -23,13 +22,14 @@ from model.embedding import output_generator
 from model import config
 
 config = config.embedding_cfg
+tokenized_path = os.path.join(root_path, config.preprocess_folder)
 
 mgr = DatasetManager(max_headline_len=config.max_headline_len, max_article_len=config.max_article_len,
                      min_headline_len=config.min_headline_len, min_article_len=config.min_article_len, verbose=True,
                      get_in_out=output_generator.get_inputs_outputs)
 
-embeddings = DatasetManager.load_embeddings()
-word2index = DatasetManager.load_word2index()
+embeddings = DatasetManager.load_embeddings(embedding_dir=config.embedding_matrix_location)
+word2index = DatasetManager.load_word2index(embedding_dir=config.embedding_matrix_location)
 
 from model.embedding.generator import DataGenerator
 
@@ -46,8 +46,8 @@ print(trained_model.input[0])
 
 encoder_inputs = trained_model.input[0]
 # Input(shape=(max_encoder_seq_len,), name='ENCODER_INPUT')
-encoder_embedding = Embedding(input_dim=config.num_encoder_tokens, output_dim=config.glove_embedding_len,
-                              input_length=config.max_encoder_seq_len, weights=[embeddings], trainable=False,
+encoder_embedding = Embedding(input_dim=embeddings.shape[0], output_dim=config.glove_embedding_len,
+                              input_length=config.max_article_len, weights=[embeddings], trainable=False,
                               name='ENCODER_EMBEDDING')(encoder_inputs)
 
 encoder = trained_model.layers[4]
@@ -63,8 +63,8 @@ decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
 
 decoder_inputs = trained_model.input[1]
 # Input(shape=(max_decoder_seq_len, ), name="DECODER_INPUT")
-decoder_embedding = Embedding(input_dim=config.num_decoder_tokens, output_dim=config.glove_embedding_len,
-                              input_length=config.max_decoder_seq_len, weights=[embeddings], trainable=False,
+decoder_embedding = Embedding(input_dim=embeddings.shape[0], output_dim=config.glove_embedding_len,
+                              input_length=config.max_headline_len, weights=[embeddings], trainable=False,
                               name='DECODER_EMBEDDING')(decoder_inputs)
 
 decoder_lstm = trained_model.layers[5]
@@ -103,7 +103,7 @@ def decode_sequence(input_seq):
     states_value = encoder_model.predict(input_seq)
 
     # Generate empty target sequence of length 1.
-    decoder_input = np.zeros((1, config.max_headline_len))
+    decoder_input = np.full((1, config.max_headline_len), fill_value=word2index['padding_token'])
     # Populate the first character of target sequence with the start character.
     decoder_input[0, 0] = word2index['start_token']
 
@@ -155,7 +155,7 @@ headline, articles, file_length = load_tokens(test_list[0])
 
 encoder_input_data, decoder_input_data, decoder_target_data = output_generator.get_inputs_outputs(x=articles,
                                                                                                   y=headline,
-                                                                                                  max_decoder_seq_len=config.max_decoder_seq_len,
+                                                                                                  max_decoder_seq_len=config.max_headline_len,
                                                                                                   glove_embedding_len=config.glove_embedding_len,
                                                                                                   embeddings=embeddings)
 
@@ -191,24 +191,25 @@ def embedding_distance(hypothesis, reference):
         distance_score = 1 - cosine(hyp_embedd, ref_embedd)  # it is the cosine similarity
         return distance_score
 
-
 def intersection(lst1, lst2):
     lst3 = [value for value in lst1 if value in lst2]
     return lst3
 
 
 def find_common_between(a, b):
+
     return intersection(a, b)
 
 
 def find_common_all(a, b, c):
+
     common = intersection(a, b)
     common = intersection(common, c)
 
     return common
 
-
 def highlight(common_h, common_a, common_all, ph, rh, ra, c1, c2, c3):
+
     ph_ = ph.copy()
     rh_ = rh.copy()
     ra_ = ra.copy()
@@ -239,7 +240,6 @@ def highlight(common_h, common_a, common_all, ph, rh, ra, c1, c2, c3):
 
     return clean(ph_), clean(rh_), clean(ra_)
 
-
 def difference(list1, list2):
     new_list = []
     for i in list1:
@@ -251,8 +251,8 @@ def difference(list1, list2):
             new_list.append(j)
     return new_list
 
-
 def create_html_output(ph, rh, ra, bl):
+
     common_all = find_common_all(ph, rh, ra)
     common_a = difference(find_common_between(ph, rh), common_all)
     common_b = difference(find_common_between(ph, ra), common_all)
@@ -269,6 +269,7 @@ def create_html_output(ph, rh, ra, bl):
 
 
 def clean(s):
+
     while 'unknown_token' in s:
         s.remove('unknown_token')
 
@@ -283,11 +284,10 @@ def clean(s):
 
     return ' '.join(s)
 
-
 list_BLEU = []
 list_embedding_score = []
 
-save_name = 'evaluation_forced_to_5.html'
+save_name = 'evaluation_unforced.html'
 
 # Clear file
 file = open(save_name, 'w+').close()
@@ -303,7 +303,7 @@ for article, headline in zip(encoder_input_data, decoder_input_data):
     real_headline = map_embeddings_to_clear_sentence(headline)
     real_article = map_embeddings_to_clear_sentence(article)
 
-    rh = clean(real_article)
+    rh = clean(real_headline)
 
     predicted_headline = (decode_sequence(np.array(article).reshape((1, config.max_article_len))))
 
@@ -316,15 +316,13 @@ for article, headline in zip(encoder_input_data, decoder_input_data):
     distance_score = embedding_distance(predicted_headline, real_headline)
     list_embedding_score.append(distance_score)
 
-    s = '*' * 100 + '\nPredicted Headline --> {}\nReal Headline --> {}\nReal Article --> {}\nBLEU-->{}'.format(ph, rh,
-                                                                                                               ra,
-                                                                                                               BLEU_score)
+    s = '*' * 100 + '\nPredicted Headline --> {}\nReal Headline --> {}\nReal Article --> {}\nBLEU-->{}'.format(ph, rh, ra, BLEU_score)
 
     if BLEU_score > best_bleu:
         best_bleu = BLEU_score
         best_str = s
 
-    # print(s)
+    print(s)
     file.write(create_html_output(predicted_headline, real_headline, real_article, BLEU_score))
 
 print('final BLEU: {}, final Embedding Evaluation {}: '.format(np.mean(list_BLEU), np.mean(list_embedding_score)))

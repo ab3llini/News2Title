@@ -45,12 +45,12 @@ if config.preprocess_data:
                          min_headline_len=config.min_headline_len, min_article_len=config.min_article_len, verbose=True,
                          get_in_out=output_generator.get_inputs_outputs)
     mgr.tokenize(size=1000, only_tfidf=False, folder=config.preprocess_folder)
-    mgr.generate_embeddings(glove_embedding_len=config.glove_embedding_len, tokenized_dir=config.preprocess_folder)
-    mgr.generate_emebedded_documents(tokenized_dir=config.preprocess_folder)
+    mgr.generate_embeddings(glove_embedding_len=config.glove_embedding_len, tokenized_dir=config.preprocess_folde,
+                            embedding_dir=config.embedding_matrix_location)
+    mgr.generate_emebedded_documents(tokenized_dir=config.preprocess_folder, embedding_dir=config.embedding_matrix_location)
 
-embeddings = DatasetManager.load_embeddings()
-word2index = DatasetManager.load_word2index()
-
+embeddings = DatasetManager.load_embeddings(embedding_dir=config.embedding_matrix_location)
+word2index = DatasetManager.load_word2index(embedding_dir=config.embedding_matrix_location)
 
 # ----------------------------------------------------------------------------------------
 # ----------------------------------------- TRAIN ----------------------------------------
@@ -59,10 +59,12 @@ word2index = DatasetManager.load_word2index()
 print('\nBuilding model')
 
 model = encoderdecoder.encoder_decoder(latent_dim=config.latent_dim, max_encoder_seq_len=config.max_article_len,
-                        max_decoder_seq_len=config.max_headline_len, num_encoder_tokens=embeddings.shape[0],
-                        num_decoder_tokens=embeddings.shape[0], glove_embedding_len=config.glove_embedding_len,
-                        embeddings=embeddings, optimizer=config.optimizer,
-                        dense_activation=config.dense_activation, loss=config.loss)
+                                       max_decoder_seq_len=config.max_headline_len,
+                                       num_encoder_tokens=embeddings.shape[0],
+                                       num_decoder_tokens=embeddings.shape[0],
+                                       glove_embedding_len=config.glove_embedding_len,
+                                       embeddings=embeddings, optimizer=config.optimizer,
+                                       dense_activation=config.dense_activation, loss=config.loss)
 
 model.summary()
 
@@ -78,8 +80,6 @@ model.fit_generator(generator=data_generator.generate_train(), validation_data=d
                     validation_steps=data_generator.get_steps_validation(), epochs=config.tot_epochs, max_queue_size=2,
                     use_multiprocessing=False, verbose=2, steps_per_epoch=data_generator.get_steps_per_epoch(),
                     callbacks=callbacks)
-
-
 
 # Save model
 print('Saving model...')

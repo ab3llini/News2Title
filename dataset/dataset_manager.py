@@ -427,15 +427,17 @@ class DatasetManager:
         return vectorizer.get_feature_names()
 
     @staticmethod
-    def load_embeddings(f_name='embeddings.pkl'):
+    def load_embeddings(embedding_dir, f_name='embeddings.pkl'):
 
-        with open(os.path.join(embedding_path, f_name), 'rb') as handle:
+        path = os.path.join(root_path, embedding_dir)
+
+        with open(os.path.join(path, f_name), 'rb') as handle:
             return pickle.load(handle)
 
     @staticmethod
-    def load_word2index(f_name='word2index.pkl'):
-
-        with open(os.path.join(embedding_path, f_name), 'rb') as handle:
+    def load_word2index(embedding_dir, f_name='word2index.pkl'):
+        path = os.path.join(root_path, embedding_dir)
+        with open(os.path.join(path, f_name), 'rb') as handle:
             return pickle.load(handle)
 
     def load_test(self, num_decoder_tokens, f_name):
@@ -462,7 +464,7 @@ class DatasetManager:
 
         # We need to load now our embeddings in order to proceed with further processing
         word2index, embeddings = load_glove_embeddings(
-            fp=os.path.join(root_path, embedding_dir, 'glove.6B.' + str(glove_embedding_len) + 'd.txt'),
+            fp=os.path.join(root_path, 'embedding/', 'glove.6B.' + str(glove_embedding_len) + 'd.txt'),
             embedding_dim=glove_embedding_len)
 
         tfidf = self.load_tfidf_features(fname)
@@ -485,8 +487,8 @@ class DatasetManager:
         f_word2index = 'word2index.pkl'
         f_embeddings = 'embeddings.pkl'
 
-        objects = {os.path.join(root_path, 'embedding/', f_word2index): word2index,
-                   os.path.join(root_path, 'embedding/', f_embeddings): embeddings}
+        objects = {os.path.join(root_path, embedding_dir, f_word2index): word2index,
+                   os.path.join(root_path, embedding_dir, f_embeddings): embeddings}
 
         for path, data in objects.items():
             # Save to pickle
@@ -569,8 +571,8 @@ class DatasetManager:
             with open(path, 'wb') as handle:
                 pickle.dump(data, handle)
 
-    def generate_emebedded_documents(self, tokenized_dir='tokenized/', ):
-        word2index = DatasetManager.load_word2index()
+    def generate_emebedded_documents(self, embedding_dir, tokenized_dir='tokenized/'):
+        word2index = DatasetManager.load_word2index(embedding_dir)
 
         start_token = word2index['start_token']
         stop_token = word2index['stop_token']

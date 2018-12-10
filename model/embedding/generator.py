@@ -37,14 +37,14 @@ class DataGenerator():
         self.decoder_tokens = decoder_tokens
 
     def get_steps_per_epoch(self):
-        return len(self.train_list) - 2
+        return len(self.train_list)
 
     def get_steps_validation(self):
-        return len(self.test_list) - 2
+        return len(self.test_list)
 
     def __len__(self):
         'Denotes the number of batches per epoch'
-        return int(np.floor(self.length) / self.batch_size)
+        return 100
 
     def load_tokens(self, file):
         with open(file, 'rb') as handle:

@@ -1,31 +1,30 @@
 import os
 import sys
 import pickle
+import ntpath
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 import numpy as np
-
 this_path = os.path.dirname(os.path.realpath(__file__))
-root_path = os.path.abspath(os.path.join(this_path, os.pardir))
+root_path = os.path.abspath(os.path.join(this_path, os.pardir, os.pardir))
 
 sys.path.append(root_path)
 
 from model import config
 from model.probability.output_generator import get_inputs_outputs
 
-config = config.embedding_cfg
+config = config.probabilistic_cfg
 
 
 class DataGenerator():
 
     def __init__(self, max_decoder_seq_len, decoder_tokens, test_size=0.33):
-        this_path = os.path.dirname(os.path.realpath(__file__))
-        root_path = os.path.abspath(os.path.join(this_path, os.pardir))
+
         embedding_prefix = 'EMB_'
         tokenized_prefix = 'A'
         tokenized_path = os.path.join(root_path, config.preprocess_folder)
         filelist = []
-        import ntpath
+
 
         for f in os.listdir(tokenized_path):
             if ntpath.basename(f).startswith(embedding_prefix + tokenized_prefix):
