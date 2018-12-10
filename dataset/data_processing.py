@@ -1,7 +1,6 @@
-import numpy as np
 import pickle
 from utility.text import *
-from utility.model import *
+from model.embedding.model import *
 from sklearn.model_selection import train_test_split
 import embedding.load_glove_embeddings as emb
 from keras.preprocessing.sequence import pad_sequences

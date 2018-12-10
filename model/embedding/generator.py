@@ -1,24 +1,18 @@
 import os
 import sys
-import keras
 import pickle
-import numpy as np
-import pandas as pd
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
+import numpy as np
 
 this_path = os.path.dirname(os.path.realpath(__file__))
-root_path = os.path.abspath(os.path.join(this_path, os.pardir))
-
+root_path = os.path.abspath(os.path.join(this_path, os.pardir, os.pardir))
 sys.path.append(root_path)
-tokenized_dir = 'tokenized/'
-f = 'complete_embedded.pkl'
 
-file_path = os.path.join(root_path, tokenized_dir, f)
+from model import config
+from model.embedding.output_generator import get_inputs_outputs
 
-from model.dataset_manager import DatasetManager
-from utility.model import get_inputs_outputs
-import numpy as np
+config = config.embedding_cfg
 
 
 class DataGenerator():
@@ -28,7 +22,7 @@ class DataGenerator():
         root_path = os.path.abspath(os.path.join(this_path, os.pardir))
         embedding_prefix = 'EMB_'
         tokenized_prefix = 'A'
-        tokenized_path = os.path.join(root_path, 'tokenized/')
+        tokenized_path = os.path.join(root_path, config.preprocess_folder)
         self.embeddings = embeddings
         self.glove_embedding_len = glove_embedding_len
         filelist = []

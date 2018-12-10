@@ -1,8 +1,5 @@
 from keras.models import Model
 from keras.layers import Input, LSTM, Dense, Embedding, TimeDistributed
-from keras.optimizers import RMSprop
-from keras.losses import categorical_crossentropy
-
 
 # ----------------------------------------------------------------------------------------
 # ----------------------------------------- MODEL ----------------------------------------

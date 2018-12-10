@@ -1,44 +1,41 @@
 from keras.models import Model
-from keras.layers import Input, Dense, Embedding, TimeDistributed, LSTM
+from keras.layers import Input, Dense, Embedding
 from keras.models import load_model
 import numpy as np
 import os
 import sys
-
 from scipy.spatial.distance import cosine
 from sklearn.model_selection import train_test_split
+import pickle
+import ntpath
+import nltk
 
 this_path = os.path.dirname(os.path.realpath(__file__))
-root_path = os.path.abspath(os.path.join(this_path, os.pardir))
+root_path = os.path.abspath(os.path.join(this_path, os.pardir, os.pardir))
+embedding_prefix = 'EMB_'
+tokenized_prefix = 'A'
 tokenized_path = os.path.join(root_path, 'tokenized/')
-embedding_path = os.path.join(root_path, 'embedding/')
+
 sys.path.append(root_path)
 
-from model.dataset_manager import DatasetManager, get_inputs_outputs
+from dataset.dataset_manager import DatasetManager
+from model.embedding import output_generator
+from model import config
 
-max_headline_len = 20
-max_article_len = 40
-min_headline_len = 5
-min_article_len = 10
+config = config.embedding_cfg
 
-glove_embedding_len = 50
-
-mgr = DatasetManager(max_headline_len=max_headline_len, max_article_len=max_article_len,
-                     min_headline_len=min_headline_len, min_article_len=min_article_len, verbose=True)
+mgr = DatasetManager(max_headline_len=config.max_headline_len, max_article_len=config.max_article_len,
+                     min_headline_len=config.min_headline_len, min_article_len=config.min_article_len, verbose=True,
+                     get_in_out=output_generator.get_inputs_outputs)
 
 embeddings = DatasetManager.load_embeddings()
 word2index = DatasetManager.load_word2index()
 
-# mgr.generate_emebedded_documents()
+from model.embedding.generator import DataGenerator
 
-num_encoder_tokens = num_decoder_tokens = embeddings.shape[0]
-max_encoder_seq_len = max_article_len
-max_decoder_seq_len = max_headline_len
-latent_dim = 512  # Latent dimensionality of the encoding space.
-
-from model.generator import DataGenerator
-
-data_generator = DataGenerator(max_decoder_seq_len=max_headline_len, decoder_tokens=embeddings.shape[0], test_size=0.20, embeddings=embeddings, glove_embedding_len=glove_embedding_len)
+data_generator = DataGenerator(max_decoder_seq_len=config.max_headline_len, decoder_tokens=embeddings.shape[0],
+                               test_size=config.test_ratio, embeddings=embeddings,
+                               glove_embedding_len=config.glove_embedding_len)
 
 # Restore the model and reconstruct the encoder and decoder.
 trained_model = load_model('n2t_full_embedding_512_cosine1543883336.h5')
@@ -48,8 +45,8 @@ trained_model = load_model('n2t_full_embedding_512_cosine1543883336.h5')
 
 encoder_inputs = trained_model.input[0]
 # Input(shape=(max_encoder_seq_len,), name='ENCODER_INPUT')
-encoder_embedding = Embedding(input_dim=num_encoder_tokens, output_dim=glove_embedding_len,
-                              input_length=max_encoder_seq_len, weights=[embeddings], trainable=False,
+encoder_embedding = Embedding(input_dim=config.num_encoder_tokens, output_dim=config.glove_embedding_len,
+                              input_length=config.max_encoder_seq_len, weights=[embeddings], trainable=False,
                               name='ENCODER_EMBEDDING')(encoder_inputs)
 
 encoder = trained_model.layers[4]
@@ -59,21 +56,21 @@ encoder_states = [state_h, state_c]
 encoder_model = Model(encoder_inputs, encoder_states)
 
 # Decoder reconstruction
-decoder_state_input_h = Input(shape=(latent_dim,))
-decoder_state_input_c = Input(shape=(latent_dim,))
+decoder_state_input_h = Input(shape=(config.latent_dim,))
+decoder_state_input_c = Input(shape=(config.latent_dim,))
 decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
 
 decoder_inputs = trained_model.input[1]
 # Input(shape=(max_decoder_seq_len, ), name="DECODER_INPUT")
-decoder_embedding = Embedding(input_dim=num_decoder_tokens, output_dim=glove_embedding_len,
-                              input_length=max_decoder_seq_len, weights=[embeddings], trainable=False,
+decoder_embedding = Embedding(input_dim=config.num_decoder_tokens, output_dim=config.glove_embedding_len,
+                              input_length=config.max_decoder_seq_len, weights=[embeddings], trainable=False,
                               name='DECODER_EMBEDDING')(decoder_inputs)
 
 decoder_lstm = trained_model.layers[5]
 # LSTM(latent_dim, return_sequences=True, return_state=True, name="DECODER")
 decoder_outputs, state_h, state_c = decoder_lstm(decoder_embedding, initial_state=decoder_states_inputs)
 
-decoder_dense = Dense(num_decoder_tokens, activation='softmax', name="DECODER_DENSE")
+decoder_dense = Dense(config.num_decoder_tokens, activation=config.dense_activation, name="DECODER_DENSE")
 decoder_states = [state_h, state_c]
 decoder_time_distributed = trained_model.layers[6]
 # TimeDistributed(decoder_dense, name="DECODER_DISTRIBUTED_OUTPUT")
@@ -94,10 +91,10 @@ for k, v in word2index.items():
 
 
 def find_closest_word_index(w):
-  diff = embeddings - w
-  delta = np.sum(diff * diff, axis=1)
-  i = np.argmin(delta)
-  return i
+    diff = embeddings - w
+    delta = np.sum(diff * diff, axis=1)
+    i = np.argmin(delta)
+    return i
 
 
 def decode_sequence(input_seq):
@@ -105,7 +102,7 @@ def decode_sequence(input_seq):
     states_value = encoder_model.predict(input_seq)
 
     # Generate empty target sequence of length 1.
-    decoder_input = np.zeros((1, max_headline_len))
+    decoder_input = np.zeros((1, config.max_headline_len))
     # Populate the first character of target sequence with the start character.
     decoder_input[0, 0] = word2index['start_token']
 
@@ -126,7 +123,7 @@ def decode_sequence(input_seq):
 
         # Exit condition: either hit max length
         # or find stop character.
-        if (sampled_char == 'stop_token' or len(decoded_sentence) > max_headline_len - 1):
+        if sampled_char == 'stop_token' or len(decoded_sentence) > config.max_headline_len - 1:
             stop_condition = True
 
         else:
@@ -137,22 +134,13 @@ def decode_sequence(input_seq):
     return decoded_sentence
 
 
-import pickle
-
-this_path = os.path.dirname(os.path.realpath(__file__))
-root_path = os.path.abspath(os.path.join(this_path, os.pardir))
-embedding_prefix = 'EMB_'
-tokenized_prefix = 'A'
-tokenized_path = os.path.join(root_path, 'tokenized/')
 filelist = []
-
-import ntpath
 
 for f in os.listdir(tokenized_path):
     if ntpath.basename(f).startswith(embedding_prefix + tokenized_prefix):
         filelist.append(os.path.join(tokenized_path, f))
-train_list, test_list = train_test_split(filelist, test_size=0.33, random_state=42)
 
+train_list, test_list = train_test_split(filelist, test_size=config.test_ratio, random_state=42)
 
 def load_tokens(file):
     with open(file, 'rb') as handle:
@@ -164,10 +152,11 @@ def load_tokens(file):
 
 headline, articles, file_length = load_tokens(test_list[0])
 
-encoder_input_data, decoder_input_data, decoder_target_data = get_inputs_outputs(x=articles, y=headline,
-                                                                                 max_decoder_seq_len=max_decoder_seq_len,
-                                                                                 num_decoder_tokens=embeddings.shape[0])
-
+encoder_input_data, decoder_input_data, decoder_target_data = output_generator.get_inputs_outputs(x=articles,
+                                                                                                  y=headline,
+                                                                                                  max_decoder_seq_len=config.max_decoder_seq_len,
+                                                                                                  glove_embedding_len=config.glove_embedding_len,
+                                                                                                  embeddings=embeddings)
 
 def map_embeddings_to_clear_sentence(emb_list):
     phrase = []
@@ -175,10 +164,6 @@ def map_embeddings_to_clear_sentence(emb_list):
         word = index2word[sampled_token_index]
         phrase.append(str(word))
     return phrase
-
-
-import nltk
-
 
 def get_semantic_averaged(emb_list):
     total_elements = 1
@@ -212,19 +197,17 @@ def intersection(lst1, lst2):
 
 
 def find_common_between(a, b):
-
     return intersection(a, b)
 
 
 def find_common_all(a, b, c):
-
     common = intersection(a, b)
     common = intersection(common, c)
 
     return common
 
-def highlight(common_h, common_a, common_all, ph, rh, ra, c1, c2, c3):
 
+def highlight(common_h, common_a, common_all, ph, rh, ra, c1, c2, c3):
     ph_ = ph.copy()
     rh_ = rh.copy()
     ra_ = ra.copy()
@@ -255,6 +238,7 @@ def highlight(common_h, common_a, common_all, ph, rh, ra, c1, c2, c3):
 
     return clean(ph_), clean(rh_), clean(ra_)
 
+
 def difference(list1, list2):
     new_list = []
     for i in list1:
@@ -266,8 +250,8 @@ def difference(list1, list2):
             new_list.append(j)
     return new_list
 
-def create_html_output(ph, rh, ra, bl):
 
+def create_html_output(ph, rh, ra, bl):
     common_all = find_common_all(ph, rh, ra)
     common_a = difference(find_common_between(ph, rh), common_all)
     common_b = difference(find_common_between(ph, ra), common_all)
@@ -284,7 +268,6 @@ def create_html_output(ph, rh, ra, bl):
 
 
 def clean(s):
-
     while 'unknown_token' in s:
         s.remove('unknown_token')
 
@@ -321,7 +304,7 @@ for article, headline in zip(encoder_input_data, decoder_input_data):
 
     rh = clean(real_article)
 
-    predicted_headline = (decode_sequence(np.array(article).reshape((1, max_article_len))))
+    predicted_headline = (decode_sequence(np.array(article).reshape((1, config.max_article_len))))
 
     ph = clean(predicted_headline)
     ra = clean(real_article)
@@ -332,7 +315,9 @@ for article, headline in zip(encoder_input_data, decoder_input_data):
     distance_score = embedding_distance(predicted_headline, real_headline)
     list_embedding_score.append(distance_score)
 
-    s = '*' * 100 + '\nPredicted Headline --> {}\nReal Headline --> {}\nReal Article --> {}\nBLEU-->{}'.format(ph, rh, ra, BLEU_score)
+    s = '*' * 100 + '\nPredicted Headline --> {}\nReal Headline --> {}\nReal Article --> {}\nBLEU-->{}'.format(ph, rh,
+                                                                                                               ra,
+                                                                                                               BLEU_score)
 
     if BLEU_score > best_bleu:
         best_bleu = BLEU_score
@@ -343,5 +328,3 @@ for article, headline in zip(encoder_input_data, decoder_input_data):
 
 print('final BLEU: {}, final Embedding Evaluation {}: '.format(np.mean(list_BLEU), np.mean(list_embedding_score)))
 print('BEST Headline:\n' + best_str)
-
-# TODO: fix embedding evaluation, fix bleu stuff.

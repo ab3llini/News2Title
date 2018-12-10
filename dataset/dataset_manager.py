@@ -1,6 +1,5 @@
 import os
 import pandas as pd
-import nltk
 import pickle
 
 from tqdm import tqdm
@@ -13,13 +12,10 @@ root_path = os.path.abspath(os.path.join(this_path, os.pardir))
 
 sys.path.append(root_path)
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-from model.batch_iterator import BatchIterator
-from model.batch_generator import BatchGenerator
+from dataset.batch_generator import BatchGenerator
 from embedding.load_glove_embeddings import load_glove_embeddings
 from utility.text import *
 from utility.tfidf import *
-from utility.model import *
 from utility.monitor import *
 
 tqdm.pandas()
@@ -45,13 +41,14 @@ class DatasetManager:
     It even computes the proper embedding matrix for all the words present in the corpus
     """
 
-    def __init__(self, min_headline_len, min_article_len, max_headline_len, max_article_len, verbose=False):
+    def __init__(self, min_headline_len, min_article_len, max_headline_len, max_article_len, get_in_out, verbose=False):
 
         self.min_headline_len = min_headline_len
         self.min_article_len = min_article_len
         self.max_article_len = max_article_len
         self.max_headline_len = max_headline_len
         self.verbose = verbose
+        self.get_in_out = get_in_out
 
         self.dataset = [os.path.join(dataset_path, file) for file in files]
 
@@ -185,7 +182,7 @@ class DatasetManager:
             print('We dropped a total of ' + str(o_len - n_len) + ' news - %.2f%%' % ((1 - n_len / o_len) * 100))
             print('-' * len(path))
 
-    def tokenize(self, only_tfidf, tfidf_file=None, size=500):
+    def tokenize(self, only_tfidf, tfidf_file=None, size=500, folder='tokenized/'):
 
         if only_tfidf and tfidf_file is None:
             raise Exception("You must specify a tfidf file when only_tfidf=True")
@@ -212,7 +209,6 @@ class DatasetManager:
             # Preprocessing: remove recurrent headlines (e.g: "- the new york times")
             frame['title'] = frame['title'].str.replace(' - The New York Times', '')
             frame['title'] = frame['title'].str.replace(' - Breitbart', '')
-
 
             if self.verbose:
                 print('Removing non-ASCII chars..')
@@ -301,7 +297,7 @@ class DatasetManager:
                     out.append([t, d])
 
                 f_name = tokenized_prefix + str(idx) + '_C' + str(chunk + 1) + '.pkl'
-                save_path = os.path.join(root_path, 'tokenized/', f_name)
+                save_path = os.path.join(root_path, folder, f_name)
                 # Save to pickle
                 with open(save_path, 'wb') as handle:
                     pickle.dump(out, handle)
@@ -322,14 +318,9 @@ class DatasetManager:
             features = pickle.load(handle)
 
         return features
-    
-    def generate_tfidf_globally(self,
-                                           max_features,
-                                           glove_embedding_len,
-                                           save_to_file=True,
-                                           f_name='TF-IDF',
-                                           embedding_dir='embedding/'
-                                           ):
+
+    def generate_tfidf_globally(self, max_features, glove_embedding_len, save_to_file=True, f_name='TF-IDF',
+                                embedding_dir='embedding/'):
 
         if self.verbose:
             print('TF-IDF Computation started.')
@@ -354,7 +345,6 @@ class DatasetManager:
             # Preprocessing: remove recurrent headlines (e.g: "- the new york times")
             frame['title'] = frame['title'].str.replace(' - The New York Times', '')
             frame['title'] = frame['title'].str.replace(' - Breitbart', '')
-
 
             if self.verbose:
                 print('Removing non-ASCII chars..')
@@ -386,8 +376,6 @@ class DatasetManager:
         if self.verbose:
             print('Allocated word2index')
             print(available_ram())
-            
-
 
         def tf_idf_tokenizer(text):
             '''
@@ -457,8 +445,8 @@ class DatasetManager:
             articles = list(data[:, 1])
 
             try:
-                return get_inputs_outputs(x=articles, y=headlines, max_decoder_seq_len=self.max_headline_len,
-                                          num_decoder_tokens=num_decoder_tokens)
+                return self.get_in_out(x=articles, y=headlines, max_decoder_seq_len=self.max_headline_len,
+                                       num_decoder_tokens=num_decoder_tokens)
 
             except MemoryError as me:
                 print('[<->] Memory alloc failed while loading test set. Size might be too large, '

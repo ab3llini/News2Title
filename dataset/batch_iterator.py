@@ -1,4 +1,3 @@
-import numpy as np
 import pickle
 import os
 import sys
@@ -14,8 +13,7 @@ dataset_path = os.path.join(root_path, 'dataset/')
 tokenized_path = os.path.join(root_path, 'tokenized/')
 embedding_path = os.path.join(root_path, 'embedding/')
 
-from utility.monitor import *
-from utility.model import *
+from model.embedding.model import *
 
 
 def shift_list(n, data):
