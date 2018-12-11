@@ -39,7 +39,7 @@ data_generator = DataGenerator(max_decoder_seq_len=config.max_headline_len, deco
                                test_size=config.test_ratio)
 
 # Restore the model and reconstruct the encoder and decoder.
-trained_model = load_model('n2t_full_tfidf1543736589.h5')
+trained_model = load_model('n2t_tfidf50k_embedding_50_latent_256_patience_5.h5')
 # We reconstruct the model in order to make inference
 # Encoder reconstruction
 
@@ -96,7 +96,7 @@ def decode_sequence(input_seq):
     states_value = encoder_model.predict(input_seq)
 
     # Generate empty target sequence of length 1.
-    decoder_input = np.zeros((1, config.max_headline_len))
+    decoder_input = np.full((1, config.max_headline_len), fill_value=word2index['padding_token'])
     # Populate the first character of target sequence with the start character.
     decoder_input[0, 0] = word2index['start_token']
 
@@ -287,7 +287,7 @@ def clean(s):
 list_BLEU = []
 list_embedding_score = []
 
-save_name = 'evaluation_unforced.html'
+save_name = 'evaluation_forced_to_5.html'
 
 # Clear file
 file = open(save_name, 'w+').close()

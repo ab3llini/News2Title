@@ -287,7 +287,7 @@ def clean(s):
 list_BLEU = []
 list_embedding_score = []
 
-save_name = 'evaluation_unforced.html'
+save_name = 'evaluation_forced_to_5.html'
 
 # Clear file
 file = open(save_name, 'w+').close()

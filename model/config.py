@@ -33,12 +33,12 @@ embedding_cfg = DotDict({
     # Split ratio
     'test_ratio': 0.2,
 
-    'tot_epochs': 50,  # Number of epochs to train for.
+    'tot_epochs': 1000,  # Number of epochs to train for.
     'epochs_per_chunk': 1,  # Number of epochs to train each chunk on
     'latent_dim': 512,  # Latent dimensionality of the encoding space.
 
     # Tensorboard log dir
-    'tensorboard_log_dir': os.path.join(root_path, 'tensorboard/emb'),
+    'tensorboard_log_dir': os.path.join(root_path, 'tensorboard/emb/'),
     
     # Output layer config
     'dense_activation': 'linear',
@@ -78,12 +78,12 @@ probabilistic_cfg = DotDict({
     # Split ratio
     'test_ratio': 0.2,
 
-    'tot_epochs': 50,  # Number of epochs to train for.
+    'tot_epochs': 100,  # Number of epochs to train for.
     'epochs_per_chunk': 1,  # Number of epochs to train each chunk on
     'latent_dim': 256,  # Latent dimensionality of the encoding space.
 
     # Tensorboard log dir
-    'tensorboard_log_dir': os.path.join(root_path, 'tensorboard/proba'),
+    'tensorboard_log_dir': os.path.join(root_path, 'tensorboard/proba/'),
 
     # Output layer config
     'dense_activation': 'softmax',

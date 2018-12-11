@@ -33,7 +33,6 @@ tensorboard = TensorBoard(log_dir=config.tensorboard_log_dir, write_graph=True)
 # Callbacks
 callbacks = [tensorboard, early_stopping]
 
-
 if config.preprocess_data:
     # -------------------------------------------------------------------------------------
     # --------------------------------- DATA PROCESSING -----------------------------------
@@ -42,9 +41,11 @@ if config.preprocess_data:
     mgr = DatasetManager(max_headline_len=config.max_headline_len, max_article_len=config.max_article_len,
                          min_headline_len=config.min_headline_len, min_article_len=config.min_article_len, verbose=True,
                          get_in_out=output_generator.get_inputs_outputs)
-    mgr.tokenize(size=500, only_tfidf=False, folder=config.preprocess_folder)
-    mgr.generate_embeddings_from_tfidf(glove_embedding_len=config.glove_embedding_len, fname='TF-IDF_50000.pkl',embedding_dir=config.embedding_matrix_location)
-    mgr.generate_emebedded_documents(tokenized_dir=config.preprocess_folder, embedding_dir=config.embedding_matrix_location)
+    mgr.tokenize(size=100, only_tfidf=False, folder=config.preprocess_folder)
+    mgr.generate_embeddings_from_tfidf(glove_embedding_len=config.glove_embedding_len, fname='TF-IDF_50000.pkl',
+                                       embedding_dir=config.embedding_matrix_location)
+    mgr.generate_emebedded_documents(tokenized_dir=config.preprocess_folder,
+                                     embedding_dir=config.embedding_matrix_location)
 
 embeddings = DatasetManager.load_embeddings(embedding_dir=config.embedding_matrix_location)
 word2index = DatasetManager.load_word2index(embedding_dir=config.embedding_matrix_location)
@@ -60,7 +61,8 @@ model = encoderdecoder.encoder_decoder(latent_dim=config.latent_dim, max_encoder
                                        num_encoder_tokens=embeddings.shape[0], num_decoder_tokens=embeddings.shape[0],
                                        glove_embedding_len=config.glove_embedding_len, embeddings=embeddings,
                                        optimizer=config.optimizer, dense_activation=config.dense_activation,
-                                       loss=config.loss)
+                                       loss=config.loss,
+                                       output_dimension=embeddings.shape[0])
 
 model.summary()
 

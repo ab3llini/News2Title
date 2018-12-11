@@ -504,7 +504,7 @@ class DatasetManager:
 
         # We need to load now our embeddings in order to proceed with further processing
         word2index, embeddings = load_glove_embeddings(
-            fp=os.path.join(root_path, embedding_dir, 'glove.6B.' + str(glove_embedding_len) + 'd.txt'),
+            fp=os.path.join(root_path, 'embedding/', 'glove.6B.' + str(glove_embedding_len) + 'd.txt'),
             embedding_dim=glove_embedding_len)
 
         tokenized = [os.path.join(root_path, tokenized_dir, f) for f in
