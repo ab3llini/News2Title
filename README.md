@@ -1,7 +1,10 @@
-# News2Title
+
+# News2Title [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Recurrent neural networks for headline generation.
 
 > We have written a paper about this work. You can find it in the project root.
+
 
 ## Abstract
 Automatic headline generation is a sub-task of document summarization with many reported applications.
