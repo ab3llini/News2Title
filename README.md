@@ -1,5 +1,5 @@
 
-# News2Headline [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+# News2Headline [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![CodeFactor](https://www.codefactor.io/repository/github/ab3llini/news2headline/badge)](https://www.codefactor.io/repository/github/ab3llini/news2headline)
 
 Recurrent neural networks for headline generation.
 
